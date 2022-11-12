@@ -1,0 +1,2 @@
+- [ ] https://www.youtube.com/watch?v=OGBCxqseoWo&ab_channel=J%C3%BCrgenMo%C3%9Fgraber
+- [ ] https://www.youtube.com/watch?v=TtHuJJJqA6c&ab_channel=J%C3%BCrgenMo%C3%9Fgraber

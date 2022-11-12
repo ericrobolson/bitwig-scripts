@@ -36,21 +36,27 @@ const NUM_TRACKS = 8;
 const NUM_SENDS = 8;
 const NUM_SCENES = 8;
 
-const ext = {
-  transport: null,
-};
+var ext: Ext;
+
+class Ext {
+  transport: Transport;
+
+  constructor(host: Host) {
+    this.transport = host.createTransport();
+  }
+}
 
 const init = () => {
   sendSysex(SYSEX.programmerMode);
   LaunchpadX.setLight();
-  ext.transport = host.createTransport();
+  ext = new Ext(host);
 
-  host.getMidiInPort(0).setMidiCallback(onMidi0);
-  host.getMidiInPort(0).setSysexCallback(onSysex0);
+  host.getMidiInPort(0).setMidiCallback(onMidi);
+  host.getMidiInPort(0).setSysexCallback(onSysex);
 };
 
 // Called when a short MIDI message is received on MIDI input port 0.
-function onMidi0(status, note, velocity) {
+function onMidi(status: number, note: number, velocity: number) {
   // TODO: Implement your MIDI input handling code here.
   println(`MIDI: ${status} - ${note} - ${velocity}`);
   if (note === 19) {
@@ -59,9 +65,10 @@ function onMidi0(status, note, velocity) {
 }
 
 // Called when a MIDI sysex message is received on MIDI input port 0.
-function onSysex0(data) {
+function onSysex(data: string) {
   println(`sysex: ${data}`);
 
+  /*
   // MMC Transport Controls:
   switch (data) {
     case "f07f7f0605f7":
@@ -80,6 +87,7 @@ function onSysex0(data) {
       ext.transport.record();
       break;
   }
+  */
 }
 
 function flush() {
