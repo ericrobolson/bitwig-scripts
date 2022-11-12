@@ -31,35 +31,51 @@ host.defineController(
 );
 host.defineMidiPorts(1, 1);
 host.addDeviceNameBasedDiscoveryPair(["Launchpad X"], ["Launchpad X"]);
+for (var i = 0; i < 10; i++) {
+  host.addDeviceNameBasedDiscoveryPair(
+    [`MIDIIN${i} (LPX MIDI)`],
+    [`MIDIOUT${i} (LPX MIDI)`]
+  );
+}
+host.addDeviceNameBasedDiscoveryPair(["LPX MIDI"], ["LPX MIDI"]);
+//TODO: need to add in more named discovery pairs.
 
 const NUM_TRACKS = 8;
 const NUM_SENDS = 8;
 const NUM_SCENES = 8;
 
-var buttons: ButtonGrid = new ButtonGrid(9, 9);
-for (var x = 0; x < buttons.width; x++) {
-  for (var y = 0; y < buttons.height; y++) {
-    buttons.setCallback(x, y, (x, y, event, velocity) => {
-      println(`Button event: ${x},${y} - ${event}`);
-    });
-
-    buttons.setMidiGridMap((note) => {
-      const x = (note - 1) % 10;
-      const y = (note - 1) / 10;
-      println(`Note: ${note}. ${x},${y}`);
-
-      return [x, y];
-    });
-  }
-}
+var buttons: ButtonGrid;
+var transport: Transport;
 
 const init = () => {
-  // Do not perform allocations in here.
   sendSysex(Sysex.programmerMode);
   LaunchpadX.setLight();
+  const inputPort = host.getMidiInPort(0);
+  inputPort.setMidiCallback(onMidi);
+  inputPort.setSysexCallback(onSysex);
 
-  host.getMidiInPort(0).setMidiCallback(onMidi);
-  host.getMidiInPort(0).setSysexCallback(onSysex);
+  transport = host.createTransport();
+
+  buttons = new ButtonGrid(9, 9);
+  for (var x = 0; x < buttons.width; x++) {
+    for (var y = 0; y < buttons.height; y++) {
+      const callback = (
+        x: number,
+        y: number,
+        event: ButtonEvent,
+        velocity: number,
+        prevVelocity: number
+      ) => {
+        if (x === 7 && y == 8 && prevVelocity === 0 && velocity !== 0) {
+          println("Is record!");
+          transport.togglePlay();
+        }
+        println(`Button event: ${x},${y} - ${event}: ${velocity}`);
+      };
+
+      buttons.setCallback(x, y, callback);
+    }
+  }
 };
 
 // Called when a short MIDI message is received on MIDI input port 0.
@@ -69,6 +85,11 @@ function onMidi(status: number, note: number, velocity: number) {
   const y = Math.floor(note / 10) - 1;
 
   println(`MIDI: ${status} - ${note} - ${velocity}. (${x},${y})`);
+
+  println(`is note off: ${isNoteOff(status, velocity)}`);
+  println(`channel: ${MIDIChannel(status)}`);
+
+  buttons.handleNote(x, y, velocity);
 }
 
 // Called when a MIDI sysex message is received on MIDI input port 0.

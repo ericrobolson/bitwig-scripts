@@ -8,14 +8,13 @@ type OnButtonEvent = (
   x: number,
   y: number,
   event: ButtonEvent,
-  velocity: number
+  velocity: number,
+  prevVelocity: number
 ) => void;
 
 class ButtonGrid {
   readonly width: number;
   readonly height: number;
-
-  private midiGridMap: (note: number) => [number, number];
   private readonly callbacks: Array<OnButtonEvent>;
   private readonly velocities: Array<number>;
 
@@ -24,7 +23,6 @@ class ButtonGrid {
     this.height = height;
     this.callbacks = new Array(width * height);
     this.velocities = new Array(width * height);
-    this.midiGridMap = (_) => [0, 0];
 
     var x, y, idx;
     for (x = 0; x < width; x++) {
@@ -40,13 +38,7 @@ class ButtonGrid {
     this.callbacks[index2dTo1d(x, y, this.width, this.height)] = callback;
   }
 
-  setMidiGridMap(map: (note: number) => [number, number]) {
-    this.midiGridMap = map;
-  }
-
-  handleMidi(midiNote: number, velocity: number) {
-    const [x, y] = this.midiGridMap(midiNote);
-
+  handleNote(x: number, y: number, velocity: number) {
     const idx = index2dTo1d(x, y, this.width, this.height);
 
     let event = null;
@@ -59,7 +51,7 @@ class ButtonGrid {
     }
 
     // Update values and trigger callback.
+    this.callbacks[idx](x, y, event, velocity, this.velocities[idx]);
     this.velocities[idx] = velocity;
-    this.callbacks[idx](x, y, event, velocity);
   }
 }
