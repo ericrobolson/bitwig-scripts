@@ -44,13 +44,6 @@ const init = () => {
   host.getMidiInPort(0).setSysexCallback(onSysex);
 };
 
-class ButtonEvent {
-  type(): ButtonType {
-    throw "Need to implement button types";
-  }
-}
-interface ButtonType {}
-
 // Called when a short MIDI message is received on MIDI input port 0.
 function onMidi(status: number, note: number, velocity: number) {
   // TODO: Implement your MIDI input handling code here.
