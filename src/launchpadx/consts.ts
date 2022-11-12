@@ -12,6 +12,8 @@ const enum PanelLayout {
 const enum ColorPalette {
   Off = "00",
 
+  Purple = "50",
+
   Red = "48",
   RedLighter = "04",
   RedDarker = "07",

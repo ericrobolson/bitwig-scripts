@@ -14,10 +14,6 @@ class LaunchpadObject {
     }
   }
 
-  setLed(x: number, y: number, r: number, g: number, b: number) {
-    println("TODO: need to queue op setting of LED");
-  }
-
   flush() {
     var lights = "";
 
@@ -52,7 +48,12 @@ class LaunchpadObject {
         const y = col;
         const [r, g, b] = trackBankHandler.colors[7 - y];
         let light;
-        if (r === 0 && g === 0 && b === 0) {
+
+        let isHeld = false;
+
+        if (isHeld) {
+          light = staticLight(x, y, ColorPalette.Purple);
+        } else if (r === 0 && g === 0 && b === 0) {
           light = staticLight(x, y, ColorPalette.White);
         } else {
           light = rgbLight(x, y, r, g, b);
@@ -67,8 +68,13 @@ class LaunchpadObject {
       const y = 8;
       for (var x = 0; x < NUM_SCENES; x++) {
         const y = col;
-        lights += pulsingLight(x, y, ColorPalette.Blue);
+        lights += staticLight(x, y, ColorPalette.Blue);
       }
+    }
+
+    // Paint logo
+    {
+      lights += pulsingLight(8, 8, ColorPalette.HotPink);
     }
 
     const sysex = `F0 00 20 29 02 0C 03 ${lights} f7`;

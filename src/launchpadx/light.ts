@@ -6,9 +6,9 @@ const clipLight = (x: number, y: number, clip: Clip) => {
   } else if (clip.isStopQueued) {
     return pulsingLight(x, y, ColorPalette.Dirt);
   } else if (clip.isRecording) {
-    return flashingLight(x, y, ColorPalette.Red, ColorPalette.RedDarker);
+    return flashingLight(x, y, ColorPalette.RedDarker, ColorPalette.Red);
   } else if (clip.isPlaying) {
-    return flashingLight(x, y, ColorPalette.Green, ColorPalette.GreenDarker);
+    return flashingLight(x, y, ColorPalette.GreenDarker, ColorPalette.Green);
   }
 
   const [clipR, clipG, clipB] = clip.color;

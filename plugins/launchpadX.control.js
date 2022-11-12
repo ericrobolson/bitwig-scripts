@@ -330,9 +330,6 @@ var LaunchpadObject = /** @class */ (function () {
             this.noteVelocities[i] = 0;
         }
     }
-    LaunchpadObject.prototype.setLed = function (x, y, r, g, b) {
-        println("TODO: need to queue op setting of LED");
-    };
     LaunchpadObject.prototype.flush = function () {
         var lights = "";
         // Paint grid
@@ -371,8 +368,12 @@ var LaunchpadObject = /** @class */ (function () {
             var y = 8;
             for (var x = 0; x < NUM_SCENES; x++) {
                 var y_1 = col;
-                lights += pulsingLight(x, y_1, "4F" /* ColorPalette.Blue */);
+                lights += staticLight(x, y_1, "4F" /* ColorPalette.Blue */);
             }
+        }
+        // Paint logo
+        {
+            lights += pulsingLight(8, 8, "5F" /* ColorPalette.HotPink */);
         }
         var sysex = "F0 00 20 29 02 0C 03 ".concat(lights, " f7");
         sendSysex(sysex);
@@ -439,10 +440,10 @@ var clipLight = function (x, y, clip) {
         return pulsingLight(x, y, "47" /* ColorPalette.Dirt */);
     }
     else if (clip.isRecording) {
-        return flashingLight(x, y, "48" /* ColorPalette.Red */, "07" /* ColorPalette.RedDarker */);
+        return flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
     }
     else if (clip.isPlaying) {
-        return flashingLight(x, y, "57" /* ColorPalette.Green */, "7B" /* ColorPalette.GreenDarker */);
+        return flashingLight(x, y, "7B" /* ColorPalette.GreenDarker */, "57" /* ColorPalette.Green */);
     }
     var _a = clip.color, clipR = _a[0], clipG = _a[1], clipB = _a[2];
     return rgbLight(x, y, clipR, clipG, clipB);

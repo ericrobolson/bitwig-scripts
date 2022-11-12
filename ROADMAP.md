@@ -4,7 +4,9 @@
 - [x] Wire up playing of clips
 - [x] Wire up stopping of clips
 - [x] Wire up recording of clips
+- [ ] Make buttons glow a color if pressed.
 - [ ] Wire up deletion of clips. Make a double tap?
+- [ ] If a track is queued to stop, make the entire track pulse red.
 - [ ] Add in pixel drawing of text
 - [ ] Add visible outline for grid on Bitwig
 - [ ] Arrange mode navigation: up/down
