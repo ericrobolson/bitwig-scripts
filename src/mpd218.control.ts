@@ -1,22 +1,11 @@
-namespace LaunchpadX {
+namespace Mpd218 {
   enum Sysex {
     programmerMode = "F0 00 20 29 02 0C 00 7F F7",
     sessionMode = "F0 00 20 29 02 0C 00 00 F7",
     lightsTestSequence = "F0 00 20 29 02 0C 03 00 0B 0D 01 0C 15 17 02 0D 25 F7",
   }
 
-  const LaunchpadX = {
-    setLight: () => {
-      println("Hi world!");
-      sendSysex(Sysex.lightsTestSequence);
-    },
-  };
-
-  const enum PanelLayout {
-    edit = "EDIT",
-    arrange = "ARRANGE",
-    mix = "MIX",
-  }
+  const Mpd218 = {};
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////// BOILERPLATE //////////////////////////////////////////
@@ -50,7 +39,6 @@ namespace LaunchpadX {
 
   const init = () => {
     sendSysex(Sysex.programmerMode);
-    LaunchpadX.setLight();
     ext = new Ext(host);
 
     host.getMidiInPort(0).setMidiCallback(onMidi);
@@ -76,27 +64,6 @@ namespace LaunchpadX {
   // Called when a MIDI sysex message is received on MIDI input port 0.
   function onSysex(data: string) {
     println(`sysex: ${data}`);
-
-    /*
-      // MMC Transport Controls:
-      switch (data) {
-        case "f07f7f0605f7":
-          ext.transport.rewind();
-          break;
-          case "f07f7f0604f7":
-            ext.transport.fastForward();
-            break;
-            case "f07f7f0601f7":
-              ext.transport.stop();
-              break;
-              case "f07f7f0602f7":
-                ext.transport.play();
-                break;
-                case "f07f7f0606f7":
-                  ext.transport.record();
-                  break;
-                }
-                */
   }
 
   function flush() {

@@ -1,6 +1,6 @@
 declare const host: Host;
 declare const loadAPI: Function;
-declare const println: Function;
+declare const println: (s: string) => void;
 declare const sendMidi: Function;
 declare const sendSysex: Function;
 declare const com: any;
