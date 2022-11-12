@@ -14,9 +14,9 @@ loadAPI(17);
 host.setShouldFailOnDeprecatedUse(true);
 
 host.defineController(
-  "Novation",
-  "Launchpad X-treme - Eric Olson",
-  "0.1",
+  "Generic",
+  "MPD218 is great - Eric Olson",
+  "0.2",
   "FC7C731D-C6D9-4627-875C-D0AA527BA73A"
 );
 host.defineMidiPorts(1, 1);

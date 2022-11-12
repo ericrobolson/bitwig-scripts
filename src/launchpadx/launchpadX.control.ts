@@ -25,9 +25,9 @@ loadAPI(17);
 host.setShouldFailOnDeprecatedUse(true);
 
 host.defineController(
-  "Akai",
-  "MPD218 is great - Eric Olson",
-  "0.1",
+  "Generic",
+  "Launchpad X-Treme - Eric Olson",
+  "0.2",
   "FC7C731D-C6D9-4627-875C-D0AA397BA73A"
 );
 host.defineMidiPorts(1, 1);
