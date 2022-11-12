@@ -25,7 +25,6 @@ declare const MIDIChannel: (status: number) => number;
 declare const pitchBendValue: (data1: number, data2: number) => number;
 declare const println: (s: string) => void;
 declare const uint8ToHex: (num: number) => string;
-
 declare const sendChannelController: (
   channel: number,
   controller: number,
@@ -144,6 +143,7 @@ interface Host {
   platformIsWindows(): boolean;
 
   setShouldFailOnDeprecatedUse(shouldFail: boolean): void;
+  showPopupNotification(msg: string): void;
 }
 
 interface MidiInPort {

@@ -4,13 +4,14 @@
 - [x] Wire up playing of clips
 - [x] Wire up stopping of clips
 - [x] Wire up recording of clips
+- [ ] Fix bug with recording on tap. Should need to do something else.
+- [ ] Arrange mode navigation: up/down on window + lpad
+- [ ] Arrange mode navigation: left/right
+- [ ] Add visible outline for grid on Bitwig
 - [ ] Make buttons glow a color if pressed.
 - [ ] Wire up deletion of clips. Make a double tap?
 - [ ] If a track is queued to stop, make the entire track pulse red.
 - [ ] Add in pixel drawing of text
-- [ ] Add visible outline for grid on Bitwig
-- [ ] Arrange mode navigation: up/down
-- [ ] Arrange mode navigation: left/right
 - [ ] Add in 'menu' concept so you can modify volumes, pans, etc vs launching clips
 - [ ] Mix mode navigation: left/right
 - [ ] Mix mode navigation: up/down

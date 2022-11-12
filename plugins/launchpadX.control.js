@@ -322,6 +322,7 @@ var LaunchpadObject = /** @class */ (function () {
                 }
             }
         };
+        host.showPopupNotification("Testing pop up noti");
         var NUM_NOTES = 128;
         this.prevVelocities = new Array(NUM_NOTES);
         this.noteVelocities = new Array(NUM_NOTES);
@@ -354,7 +355,11 @@ var LaunchpadObject = /** @class */ (function () {
                 var y = col;
                 var _b = trackBankHandler.colors[7 - y], r = _b[0], g = _b[1], b = _b[2];
                 var light_1 = void 0;
-                if (r === 0 && g === 0 && b === 0) {
+                var isHeld = false;
+                if (isHeld) {
+                    light_1 = staticLight(x_2, y, "50" /* ColorPalette.Purple */);
+                }
+                else if (r === 0 && g === 0 && b === 0) {
                     light_1 = staticLight(x_2, y, "77" /* ColorPalette.White */);
                 }
                 else {
