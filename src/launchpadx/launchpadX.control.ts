@@ -50,11 +50,12 @@ var transport: Transport;
 const init = () => {
   sendSysex(Sysex.programmerMode);
   LaunchpadX.setLight();
+
   const inputPort = host.getMidiInPort(0);
   inputPort.setMidiCallback(onMidi);
   inputPort.setSysexCallback(onSysex);
 
-  transport = host.createTransport();
+  transport = setupTransportHandler(host.createTransport());
 
   buttons = new ButtonGrid(9, 9);
   for (var x = 0; x < buttons.width; x++) {
@@ -79,15 +80,9 @@ const init = () => {
 };
 
 // Called when a short MIDI message is received on MIDI input port 0.
-function onMidi(status: number, note: number, velocity: number) {
-  // TODO: Implement your MIDI input handling code here.
+function onMidi(_status: number, note: number, velocity: number) {
   const x = (note % 10) - 1;
   const y = Math.floor(note / 10) - 1;
-
-  println(`MIDI: ${status} - ${note} - ${velocity}. (${x},${y})`);
-
-  println(`is note off: ${isNoteOff(status, velocity)}`);
-  println(`channel: ${MIDIChannel(status)}`);
 
   buttons.handleNote(x, y, velocity);
 }

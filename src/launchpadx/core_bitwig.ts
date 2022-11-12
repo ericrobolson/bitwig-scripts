@@ -49,6 +49,20 @@ declare const sendNoteOn: (
 declare const sendPitchBend: (channel: number, value: number) => void;
 declare const sendProgramChange: (channel: number, program: number) => void;
 declare const sendSysex: (data: string) => void;
+const createNoteIn = (name: string, input: MidiInPort): NoteInput => {
+  return input.createNoteInput(
+    name,
+    // midi messages
+
+    "80????", // note off
+    "90????", // note on
+    "B0????", // cc commands
+    "D0????", // aftertouch
+    "E0????" // pitchbend
+  );
+};
+
+interface NoteInput {}
 
 interface Com {}
 
@@ -79,6 +93,7 @@ interface MidiInPort {
     callback: (status: number, note: number, velocity: number) => void
   ): void;
   setSysexCallback(callback: (data: string) => void): void;
+  createNoteInput: Function;
 }
 
 interface Transport {
@@ -90,10 +105,16 @@ interface Transport {
   tapTempo: () => void;
   togglePlay: () => void;
   restart: () => void;
-  isPlaying: () => boolean;
+  isPlaying: () => Subscribable<boolean>;
+  isArrangerRecordEnabled: () => Subscribable<boolean>;
   addIsPlayingObserver: (callback: (active: boolean) => void) => void;
   addIsRecordingObserver: (callback: (active: boolean) => void) => void;
   addOverdubObserver: (callback: (active: boolean) => void) => void;
+}
+
+interface Subscribable<T> {
+  markInterested: () => void;
+  addValueObserver: (callback: (value: T) => void) => void;
 }
 
 declare const com: Com;
