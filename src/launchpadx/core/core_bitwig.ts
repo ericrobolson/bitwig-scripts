@@ -64,7 +64,6 @@ const createNoteIn = (name: string, input: MidiInPort): NoteInput => {
 };
 
 interface NoteInput {}
-
 /**
  * file:///C:/Program%20Files/Bitwig%20Studio/4.4/resources/doc/control-surface/api/a01249.html#aa872f1370063a74bf6ccc8872216b46c
  */
@@ -99,10 +98,13 @@ interface ClipLauncherSlotBank {
   record(slot: number): void;
   showInEditor(slot: number): void;
   createEmptyClip(slot: number, lengthInBeats: number): void;
-  deleteClip(slot: number): void;
+  getItemAt(slot: number): Clip;
   duplicateClip(slot: number): void;
   launch(slot: number): void;
   stop(): void;
+}
+interface Clip {
+  deleteObject(): void;
 }
 
 interface Com {}
@@ -156,10 +158,18 @@ interface MidiInPort {
 interface TrackBank {
   scrollForwards(): void;
   scrollBackwards(): void;
+
   scrollPageBackwards(): void;
   scrollPageForwards(): void;
+
   scrollScenesUp(): void;
   scrollScenesDown(): void;
+
+  scrollTracksUp(): void;
+  scrollTrackDown(): void;
+
+  scrollToTrack(trackIdx: number): void;
+
   getSizeOfBank(): number;
   getItemAt(idx: number): Track;
   followCursorTrack(track: CursorTrack): void;

@@ -111,14 +111,18 @@ class LaunchpadObject {
         // Select things
         track.select();
         clipLauncher.select(x);
-
+        println(`toggle: ${this.controlButtons.record}`);
         if (this.controlButtons.record) {
-          track.arm().set(true);
           clipLauncher.record(x);
         } else if (this.controlButtons.stopClip) {
           clipLauncher.stop();
+        } else if (this.controlButtons.custom) {
+          // delete clip
+          clipLauncher.getItemAt(x).deleteObject();
         } else {
+          // TODO: need to differentiate between get item at and launch
           clipLauncher.launch(x);
+          clipLauncher.getItemAt(x);
         }
       } else {
         if (this.controlButtons.up) {

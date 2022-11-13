@@ -322,7 +322,6 @@ var LaunchpadObject = /** @class */ (function () {
                 }
             }
         };
-        host.showPopupNotification("Testing pop up noti");
         var NUM_NOTES = 128;
         this.prevVelocities = new Array(NUM_NOTES);
         this.noteVelocities = new Array(NUM_NOTES);
@@ -408,15 +407,21 @@ var LaunchpadObject = /** @class */ (function () {
                 // Select things
                 track.select();
                 clipLauncher.select(x);
+                println("toggle: ".concat(this.controlButtons.record));
                 if (this.controlButtons.record) {
-                    track.arm().set(true);
                     clipLauncher.record(x);
                 }
                 else if (this.controlButtons.stopClip) {
                     clipLauncher.stop();
                 }
+                else if (this.controlButtons.custom) {
+                    // delete clip
+                    clipLauncher.getItemAt(x).deleteObject();
+                }
                 else {
+                    // TODO: need to differentiate between get item at and launch
                     clipLauncher.launch(x);
+                    clipLauncher.getItemAt(x);
                 }
             }
             else {
