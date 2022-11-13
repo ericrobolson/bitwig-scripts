@@ -25,6 +25,7 @@ host.addDeviceNameBasedDiscoveryPair(["LPX MIDI"], ["LPX MIDI"]);
 var transportHandler: TransportHandler;
 var trackBankHandler: TrackHandler;
 var launchpad: LaunchpadObject;
+var applicationHandler: ApplicationHandler;
 
 const init = () => {
   sendSysex(Sysex.programmerMode);
@@ -34,7 +35,7 @@ const init = () => {
   inputPort.setSysexCallback(onSysex);
 
   launchpad = new LaunchpadObject();
-
+  applicationHandler = new ApplicationHandler(host);
   transportHandler = new TransportHandler(host);
   trackBankHandler = new TrackHandler(
     host,

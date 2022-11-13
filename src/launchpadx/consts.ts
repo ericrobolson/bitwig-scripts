@@ -3,12 +3,6 @@ const enum Sysex {
   sessionMode = "F0 00 20 29 02 0C 00 00 F7",
 }
 
-const enum PanelLayout {
-  edit = "EDIT",
-  arrange = "ARRANGE",
-  mix = "MIX",
-}
-
 const enum ColorPalette {
   Off = "00",
 
@@ -41,5 +35,10 @@ const enum LightType {
 const NUM_TRACKS = 8;
 const NUM_SENDS = 8;
 const NUM_SCENES = 8;
+
+const GRID_WIDTH: number = 8;
+const GRID_HEIGHT: number = 8;
+
+const NUM_NOTES = 128;
 
 const BACKGROUND_LIGHT_STRENGTH = 0.1;

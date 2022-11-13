@@ -1,3 +1,9 @@
+const enum PanelLayout {
+  edit = "EDIT",
+  arrange = "ARRANGE",
+  mix = "MIX",
+}
+
 declare const isActiveSensing: (status: number) => boolean;
 declare const isChannelController: (status: number) => boolean;
 declare const isChannelPressure: (status: number) => boolean;
@@ -63,6 +69,10 @@ const createNoteIn = (name: string, input: MidiInPort): NoteInput => {
   );
 };
 
+interface Application {
+  panelLayout(): PanelLayout;
+}
+
 interface NoteInput {}
 /**
  * file:///C:/Program%20Files/Bitwig%20Studio/4.4/resources/doc/control-surface/api/a01249.html#aa872f1370063a74bf6ccc8872216b46c
@@ -114,8 +124,9 @@ interface CursorTrack {
 }
 
 interface Host {
-  addDeviceNameBasedDiscoveryPair(a: Array<string>, b: Array<string>): void;
+  createApplication(): Application;
 
+  addDeviceNameBasedDiscoveryPair(a: Array<string>, b: Array<string>): void;
   createCursorTrack(
     id: string,
     name: string,

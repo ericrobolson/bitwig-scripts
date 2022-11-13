@@ -39,65 +39,19 @@ var normalizeColor = function (c) {
     return Math.round(c * 127);
 };
 //
-// src/out/core/core_containers.js
+// src/out/core/core_handlerApplication.js
 //
-var ButtonEvent;
-(function (ButtonEvent) {
-    ButtonEvent[ButtonEvent["Pressed"] = 0] = "Pressed";
-    ButtonEvent[ButtonEvent["Held"] = 1] = "Held";
-    ButtonEvent[ButtonEvent["Released"] = 2] = "Released";
-})(ButtonEvent || (ButtonEvent = {}));
-var ButtonGrid = /** @class */ (function () {
-    function ButtonGrid(width, height) {
-        this.width = width;
-        this.height = height;
-        this.callbacks = new Array(width * height);
-        this.velocities = new Array(width * height);
-        var x, y, idx;
-        for (x = 0; x < width; x++) {
-            for (y = 0; y < height; y++) {
-                idx = index2dTo1d(x, y, width, height);
-                this.callbacks[idx] = function () { };
-                this.velocities[idx] = 0;
-            }
-        }
+var ApplicationHandler = /** @class */ (function () {
+    function ApplicationHandler(host) {
+        this.application = host.createApplication();
     }
-    ButtonGrid.prototype.setCallback = function (x, y, callback) {
-        this.callbacks[index2dTo1d(x, y, this.width, this.height)] = callback;
+    ApplicationHandler.prototype.layout = function () {
+        return this.application.panelLayout();
     };
-    ButtonGrid.prototype.handleNote = function (x, y, velocity) {
-        var idx = index2dTo1d(x, y, this.width, this.height);
-        var event = null;
-        if (this.velocities[idx] > 0 && velocity == 0) {
-            event = ButtonEvent.Released;
-        }
-        else if (this.velocities[idx] !== velocity) {
-            event = ButtonEvent.Held;
-        }
-        else {
-            event = ButtonEvent.Pressed;
-        }
-        // Update values and trigger callback.
-        this.callbacks[idx](x, y, event, velocity, this.velocities[idx]);
-        this.velocities[idx] = velocity;
-    };
-    return ButtonGrid;
+    return ApplicationHandler;
 }());
 //
-// src/out/core/core_math.js
-//
-var index1dTo2d = function (index, width) {
-    return [index % width, index / width];
-};
-var index2dTo1d = function (x, y, width, height) {
-    return (y % height) * width + (x % width);
-};
-//
-// src/out/core/core_scenes.js
-//
-
-//
-// src/out/core/core_trackHandler.js
+// src/out/core/core_handlerTrack.js
 //
 var Clip = /** @class */ (function () {
     function Clip() {
@@ -193,7 +147,7 @@ var TrackHandler = /** @class */ (function () {
     return TrackHandler;
 }());
 //
-// src/out/core/core_transportHandler.js
+// src/out/core/core_handlerTransport.js
 //
 var TransportHandler = /** @class */ (function () {
     function TransportHandler(host) {
@@ -202,11 +156,23 @@ var TransportHandler = /** @class */ (function () {
     return TransportHandler;
 }());
 //
+// src/out/core/core_math.js
+//
+var index1dTo2d = function (index, width) {
+    return [index % width, index / width];
+};
+var index2dTo1d = function (x, y, width, height) {
+    return (y % height) * width + (x % width);
+};
+//
 // src/out/consts.js
 //
 var NUM_TRACKS = 8;
 var NUM_SENDS = 8;
 var NUM_SCENES = 8;
+var GRID_WIDTH = 8;
+var GRID_HEIGHT = 8;
+var NUM_NOTES = 128;
 var BACKGROUND_LIGHT_STRENGTH = 0.1;
 //
 // src/out/controlButtons.js
@@ -257,9 +223,12 @@ var GridButtons = /** @class */ (function () {
 //
 // src/out/launchpadx.js
 //
-var GRID_WIDTH = 8;
-var GRID_HEIGHT = 8;
-var NUM_NOTES = 128;
+var States;
+(function (States) {
+    States[States["ArrangeView"] = 0] = "ArrangeView";
+    States[States["MixView"] = 1] = "MixView";
+    States[States["EditView"] = 2] = "EditView";
+})(States || (States = {}));
 var LaunchpadObject = /** @class */ (function () {
     function LaunchpadObject() {
         var _this = this;
@@ -454,7 +423,16 @@ var LaunchpadObject = /** @class */ (function () {
         {
             var y = GRID_HEIGHT;
             for (var x = 0; x < NUM_SCENES; x++) {
-                var light_3 = staticLight(x, y, "4F" /* ColorPalette.Blue */);
+                var light_3 = void 0;
+                if (Buttons.isUp(x, y)) {
+                    light_3 = staticLight(x, y, "50" /* ColorPalette.Purple */);
+                }
+                else if (Buttons.isCaptureMidi(x, y)) {
+                    light_3 = staticLight(x, y, "07" /* ColorPalette.RedDarker */);
+                }
+                else {
+                    light_3 = staticLight(x, y, "4F" /* ColorPalette.Blue */);
+                }
                 if (this.previousLights[lightIndex] !== light_3) {
                     lights += light_3;
                     this.previousLights[lightIndex] = light_3;
@@ -480,6 +458,56 @@ var LaunchpadObject = /** @class */ (function () {
     };
     return LaunchpadObject;
 }());
+var Buttons = {
+    isUp: function (x, y) {
+        return x == 0 && y == GRID_HEIGHT;
+    },
+    isDown: function (x, y) {
+        return x == 1 && y == GRID_HEIGHT;
+    },
+    isLeft: function (x, y) {
+        return x == 2 && y == GRID_HEIGHT;
+    },
+    isRight: function (x, y) {
+        return x == 3 && y == GRID_HEIGHT;
+    },
+    isSession: function (x, y) {
+        return x == 4 && y == GRID_HEIGHT;
+    },
+    isNote: function (x, y) {
+        return x == 5 && y == GRID_HEIGHT;
+    },
+    isCustom: function (x, y) {
+        return x == 6 && y == GRID_HEIGHT;
+    },
+    isCaptureMidi: function (x, y) {
+        return x == 7 && y == GRID_HEIGHT;
+    },
+    isVolume: function (x, y) {
+        return x == GRID_WIDTH && y == 7;
+    },
+    isPan: function (x, y) {
+        return x == GRID_WIDTH && y == 6;
+    },
+    isSendA: function (x, y) {
+        return x == GRID_WIDTH && y == 5;
+    },
+    isSendB: function (x, y) {
+        return x == GRID_WIDTH && y == 4;
+    },
+    isStopClip: function (x, y) {
+        return x == GRID_WIDTH && y == 3;
+    },
+    isMute: function (x, y) {
+        return x == GRID_WIDTH && y == 2;
+    },
+    isSolo: function (x, y) {
+        return x == GRID_WIDTH && y == 1;
+    },
+    isRecordArm: function (x, y) {
+        return x == GRID_WIDTH && y == 0;
+    },
+};
 //
 // src/out/light.js
 //
@@ -538,12 +566,14 @@ host.addDeviceNameBasedDiscoveryPair(["LPX MIDI"], ["LPX MIDI"]);
 var transportHandler;
 var trackBankHandler;
 var launchpad;
+var applicationHandler;
 var init = function () {
     sendSysex("F0 00 20 29 02 0C 00 7F F7" /* Sysex.programmerMode */);
     var inputPort = host.getMidiInPort(0);
     inputPort.setMidiCallback(onMidi);
     inputPort.setSysexCallback(onSysex);
     launchpad = new LaunchpadObject();
+    applicationHandler = new ApplicationHandler(host);
     transportHandler = new TransportHandler(host);
     trackBankHandler = new TrackHandler(host, "LPX_TrackHandler", "LPX_TrackHandler_Cursor", NUM_TRACKS, NUM_SCENES, NUM_SENDS, true);
 };

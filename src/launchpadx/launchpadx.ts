@@ -1,6 +1,8 @@
-const GRID_WIDTH: number = 8;
-const GRID_HEIGHT: number = 8;
-const NUM_NOTES = 128;
+enum States {
+  ArrangeView,
+  MixView,
+  EditView,
+}
 
 class LaunchpadObject {
   private noteVelocities: Array<number>;
@@ -153,7 +155,14 @@ class LaunchpadObject {
     {
       const y = GRID_HEIGHT;
       for (var x = 0; x < NUM_SCENES; x++) {
-        const light = staticLight(x, y, ColorPalette.Blue);
+        let light;
+        if (Buttons.isUp(x, y)) {
+          light = staticLight(x, y, ColorPalette.Purple);
+        } else if (Buttons.isCaptureMidi(x, y)) {
+          light = staticLight(x, y, ColorPalette.RedDarker);
+        } else {
+          light = staticLight(x, y, ColorPalette.Blue);
+        }
 
         if (this.previousLights[lightIndex] !== light) {
           lights += light;
@@ -259,3 +268,55 @@ class LaunchpadObject {
     }
   };
 }
+
+const Buttons = {
+  isUp(x: number, y: number): boolean {
+    return x == 0 && y == GRID_HEIGHT;
+  },
+  isDown(x: number, y: number): boolean {
+    return x == 1 && y == GRID_HEIGHT;
+  },
+  isLeft(x: number, y: number): boolean {
+    return x == 2 && y == GRID_HEIGHT;
+  },
+  isRight(x: number, y: number): boolean {
+    return x == 3 && y == GRID_HEIGHT;
+  },
+
+  isSession(x: number, y: number): boolean {
+    return x == 4 && y == GRID_HEIGHT;
+  },
+  isNote(x: number, y: number): boolean {
+    return x == 5 && y == GRID_HEIGHT;
+  },
+  isCustom(x: number, y: number): boolean {
+    return x == 6 && y == GRID_HEIGHT;
+  },
+  isCaptureMidi(x: number, y: number): boolean {
+    return x == 7 && y == GRID_HEIGHT;
+  },
+  isVolume(x: number, y: number): boolean {
+    return x == GRID_WIDTH && y == 7;
+  },
+  isPan(x: number, y: number): boolean {
+    return x == GRID_WIDTH && y == 6;
+  },
+  isSendA(x: number, y: number): boolean {
+    return x == GRID_WIDTH && y == 5;
+  },
+  isSendB(x: number, y: number): boolean {
+    return x == GRID_WIDTH && y == 4;
+  },
+  isStopClip(x: number, y: number): boolean {
+    return x == GRID_WIDTH && y == 3;
+  },
+  isMute(x: number, y: number): boolean {
+    return x == GRID_WIDTH && y == 2;
+  },
+  isSolo(x: number, y: number): boolean {
+    return x == GRID_WIDTH && y == 1;
+  },
+  isRecordArm(x: number, y: number): boolean {
+    return x == GRID_WIDTH && y == 0;
+  },
+};
