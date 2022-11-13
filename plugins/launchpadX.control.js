@@ -43,10 +43,17 @@ var normalizeColor = function (c) {
 //
 var ApplicationHandler = /** @class */ (function () {
     function ApplicationHandler(host) {
+        var _this = this;
+        this.panelLayout = "ARRANGE" /* PanelLayout.arrange */;
         this.application = host.createApplication();
+        var observer = this.application.panelLayout();
+        observer.markInterested();
+        observer.addValueObserver(function (layout) {
+            _this.panelLayout = layout;
+        });
     }
     ApplicationHandler.prototype.layout = function () {
-        return this.application.panelLayout();
+        return this.panelLayout;
     };
     return ApplicationHandler;
 }());
@@ -71,13 +78,19 @@ var TrackHandler = /** @class */ (function () {
         var _this = this;
         this.colors = new Array(numTracks);
         this.clips = new Array(numTracks);
+        this.trackQueuedForStop = new Array(numTracks);
         this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
         this.cursor = host.createCursorTrack(id, name, 0, 0, true);
         var bankSize = this.bank.getSizeOfBank();
         var track, element;
         var _loop_1 = function () {
-            var idx = i;
+            var idx = bankIndex;
             track = this_1.bank.getItemAt(idx);
+            this_1.trackQueuedForStop[idx] = false;
+            track.isQueuedForStop().markInterested();
+            track.isQueuedForStop().addValueObserver(function (isQueuedForStop) {
+                _this.trackQueuedForStop[idx] = isQueuedForStop;
+            });
             // Track elements
             {
                 element = track.pan();
@@ -136,7 +149,7 @@ var TrackHandler = /** @class */ (function () {
             }
         };
         var this_1 = this, clips;
-        for (var i = 0; i < bankSize; i++) {
+        for (var bankIndex = 0; bankIndex < bankSize; bankIndex++) {
             _loop_1();
         }
         this.bank.followCursorTrack(this.cursor);
@@ -223,12 +236,10 @@ var GridButtons = /** @class */ (function () {
 //
 // src/out/launchpadx.js
 //
-var States;
-(function (States) {
-    States[States["ArrangeView"] = 0] = "ArrangeView";
-    States[States["MixView"] = 1] = "MixView";
-    States[States["EditView"] = 2] = "EditView";
-})(States || (States = {}));
+var StateType;
+(function (StateType) {
+    StateType[StateType["EmptyArrange"] = 0] = "EmptyArrange";
+})(StateType || (StateType = {}));
 var LaunchpadObject = /** @class */ (function () {
     function LaunchpadObject() {
         var _this = this;
@@ -382,12 +393,21 @@ var LaunchpadObject = /** @class */ (function () {
                     var x_1 = row;
                     var clip = trackBankHandler.clips[col][row];
                     var _a = trackBankHandler.colors[col], trackR = _a[0], trackG = _a[1], trackB = _a[2];
-                    var light_1 = clip.hasContent
-                        ? clipLight(x_1, y, clip)
-                        : rgbLight(x_1, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
-                    if (this.previousLights[lightIndex] !== light_1) {
-                        lights += light_1;
-                        this.previousLights[lightIndex] = light_1;
+                    var queuedForStop = trackBankHandler.trackQueuedForStop[col];
+                    println("Queued for stop - ".concat(x_1, ",").concat(y, ": ").concat(queuedForStop));
+                    var light;
+                    if (queuedForStop) {
+                        light = pulsingLight(x_1, y, "04" /* ColorPalette.RedLighter */);
+                    }
+                    else if (clip.hasContent) {
+                        light = clipLight(x_1, y, clip);
+                    }
+                    else {
+                        light = rgbLight(x_1, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
+                    }
+                    if (this.previousLights[lightIndex] !== light) {
+                        lights += light;
+                        this.previousLights[lightIndex] = light;
                         changedLights += 1;
                     }
                     lightIndex += 1;
@@ -400,20 +420,20 @@ var LaunchpadObject = /** @class */ (function () {
             for (var col = 0; col < NUM_SCENES; col++) {
                 var y = col;
                 var _b = trackBankHandler.colors[7 - y], r = _b[0], g = _b[1], b = _b[2];
-                var light_2 = void 0;
+                var light_1 = void 0;
                 var isHeld = false;
                 if (isHeld) {
-                    light_2 = staticLight(x_2, y, "50" /* ColorPalette.Purple */);
+                    light_1 = staticLight(x_2, y, "50" /* ColorPalette.Purple */);
                 }
                 else if (r === 0 && g === 0 && b === 0) {
-                    light_2 = staticLight(x_2, y, "77" /* ColorPalette.White */);
+                    light_1 = staticLight(x_2, y, "77" /* ColorPalette.White */);
                 }
                 else {
-                    light_2 = rgbLight(x_2, y, r, g, b);
+                    light_1 = rgbLight(x_2, y, r, g, b);
                 }
-                if (this.previousLights[lightIndex] !== light_2) {
-                    lights += light_2;
-                    this.previousLights[lightIndex] = light_2;
+                if (this.previousLights[lightIndex] !== light_1) {
+                    lights += light_1;
+                    this.previousLights[lightIndex] = light_1;
                     changedLights += 1;
                 }
                 lightIndex += 1;
@@ -423,19 +443,19 @@ var LaunchpadObject = /** @class */ (function () {
         {
             var y = GRID_HEIGHT;
             for (var x = 0; x < NUM_SCENES; x++) {
-                var light_3 = void 0;
+                var light_2 = void 0;
                 if (Buttons.isUp(x, y)) {
-                    light_3 = staticLight(x, y, "50" /* ColorPalette.Purple */);
+                    light_2 = staticLight(x, y, "50" /* ColorPalette.Purple */);
                 }
                 else if (Buttons.isCaptureMidi(x, y)) {
-                    light_3 = staticLight(x, y, "07" /* ColorPalette.RedDarker */);
+                    light_2 = staticLight(x, y, "07" /* ColorPalette.RedDarker */);
                 }
                 else {
-                    light_3 = staticLight(x, y, "4F" /* ColorPalette.Blue */);
+                    light_2 = staticLight(x, y, "4F" /* ColorPalette.Blue */);
                 }
-                if (this.previousLights[lightIndex] !== light_3) {
-                    lights += light_3;
-                    this.previousLights[lightIndex] = light_3;
+                if (this.previousLights[lightIndex] !== light_2) {
+                    lights += light_2;
+                    this.previousLights[lightIndex] = light_2;
                     changedLights += 1;
                 }
                 lightIndex += 1;
@@ -443,10 +463,10 @@ var LaunchpadObject = /** @class */ (function () {
         }
         // Paint logo
         {
-            var light_4 = pulsingLight(8, 8, "5F" /* ColorPalette.HotPink */);
-            if (this.previousLights[lightIndex] !== light_4) {
-                lights += light_4;
-                this.previousLights[lightIndex] = light_4;
+            var light_3 = pulsingLight(8, 8, "5F" /* ColorPalette.HotPink */);
+            if (this.previousLights[lightIndex] !== light_3) {
+                lights += light_3;
+                this.previousLights[lightIndex] = light_3;
                 changedLights += 1;
             }
             lightIndex += 1;

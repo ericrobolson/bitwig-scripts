@@ -1,7 +1,10 @@
-enum States {
-  ArrangeView,
-  MixView,
-  EditView,
+enum StateType {
+  EmptyArrange,
+}
+
+interface State {
+  type(): StateType;
+  shouldTransition(lp: LaunchpadObject): boolean;
 }
 
 class LaunchpadObject {
@@ -100,18 +103,25 @@ class LaunchpadObject {
           const y = 7 - col;
           const x = row;
 
+          const queuedForStop = trackBankHandler.trackQueuedForStop[col];
+
           const clip = trackBankHandler.clips[col][row];
           const [trackR, trackG, trackB] = trackBankHandler.colors[col];
 
-          const light = clip.hasContent
-            ? clipLight(x, y, clip)
-            : rgbLight(
-                x,
-                y,
-                trackR * BACKGROUND_LIGHT_STRENGTH,
-                trackG * BACKGROUND_LIGHT_STRENGTH,
-                trackB * BACKGROUND_LIGHT_STRENGTH
-              );
+          var light;
+          if (queuedForStop) {
+            light = pulsingLight(x, y, ColorPalette.RedLighter);
+          } else if (clip.hasContent) {
+            light = clipLight(x, y, clip);
+          } else {
+            light = rgbLight(
+              x,
+              y,
+              trackR * BACKGROUND_LIGHT_STRENGTH,
+              trackG * BACKGROUND_LIGHT_STRENGTH,
+              trackB * BACKGROUND_LIGHT_STRENGTH
+            );
+          }
 
           if (this.previousLights[lightIndex] !== light) {
             lights += light;

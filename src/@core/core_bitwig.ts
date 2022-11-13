@@ -69,8 +69,12 @@ const createNoteIn = (name: string, input: MidiInPort): NoteInput => {
   );
 };
 
+interface PanelLayoutObserver {
+  markInterested(): void;
+  addValueObserver(callback: (panelLayout: PanelLayout) => void): void;
+}
 interface Application {
-  panelLayout(): PanelLayout;
+  panelLayout(): PanelLayoutObserver;
 }
 
 interface NoteInput {}
@@ -217,6 +221,8 @@ interface SettableBool {
 interface Track {
   arm(): SettableBool;
   stop(): void;
+
+  isQueuedForStop(): Subscribable<boolean>;
 
   select(): void;
   pan(): Subscribable<number>;

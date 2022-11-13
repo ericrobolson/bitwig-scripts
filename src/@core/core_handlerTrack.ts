@@ -14,6 +14,7 @@ class Clip {
 
 class TrackHandler {
   public readonly bank: TrackBank;
+  public readonly trackQueuedForStop: Array<boolean>;
   public readonly cursor: CursorTrack;
   public readonly colors: Array<[number, number, number]>;
   public readonly clips: Array<Array<Clip>>;
@@ -29,15 +30,22 @@ class TrackHandler {
   ) {
     this.colors = new Array(numTracks);
     this.clips = new Array(numTracks);
+    this.trackQueuedForStop = new Array(numTracks);
 
     this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
     this.cursor = host.createCursorTrack(id, name, 0, 0, true);
 
     const bankSize = this.bank.getSizeOfBank();
     var track, element;
-    for (var i = 0; i < bankSize; i++) {
-      const idx = i;
+    for (var bankIndex = 0; bankIndex < bankSize; bankIndex++) {
+      const idx = bankIndex;
       track = this.bank.getItemAt(idx);
+
+      this.trackQueuedForStop[idx] = false;
+      track.isQueuedForStop().markInterested();
+      track.isQueuedForStop().addValueObserver((isQueuedForStop) => {
+        this.trackQueuedForStop[idx] = isQueuedForStop;
+      });
 
       // Track elements
       {
