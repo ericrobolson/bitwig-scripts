@@ -156,10 +156,18 @@ interface MidiInPort {
 interface TrackBank {
   scrollForwards(): void;
   scrollBackwards(): void;
+
   scrollPageBackwards(): void;
   scrollPageForwards(): void;
+
   scrollScenesUp(): void;
   scrollScenesDown(): void;
+
+  scrollTracksUp(): void;
+  scrollTrackDown(): void;
+
+  scrollToTrack(trackIdx: number): void;
+
   getSizeOfBank(): number;
   getItemAt(idx: number): Track;
   followCursorTrack(track: CursorTrack): void;

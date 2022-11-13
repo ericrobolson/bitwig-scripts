@@ -24,7 +24,7 @@ host.addDeviceNameBasedDiscoveryPair(["LPX MIDI"], ["LPX MIDI"]);
 
 var transportHandler: TransportHandler;
 var trackBankHandler: TrackHandler;
-var launchpad: LaunchpadObject;
+var state: Launchpad.State;
 
 const init = () => {
   sendSysex(Sysex.programmerMode);
@@ -33,7 +33,7 @@ const init = () => {
   inputPort.setMidiCallback(onMidi);
   inputPort.setSysexCallback(onSysex);
 
-  launchpad = new LaunchpadObject();
+  state = Launchpad.init();
 
   transportHandler = new TransportHandler(host);
   trackBankHandler = new TrackHandler(
@@ -48,16 +48,16 @@ const init = () => {
 
 // Called when a short MIDI message is received on MIDI input port 0.
 function onMidi(status: number, note: number, velocity: number) {
-  launchpad.handleMidi(status, note, velocity);
+  Launchpad.handle_midi(state, status, note, velocity);
 }
 
 // Called when a MIDI sysex message is received on MIDI input port 0.
 function onSysex(data: string) {
-  println(`sysex: ${data}`);
+  // println(`sysex: ${data}`);
 }
 
 function flush() {
-  launchpad.flush();
+  Launchpad.render(state);
 }
 
 const exit = () => {

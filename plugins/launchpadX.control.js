@@ -39,51 +39,6 @@ var normalizeColor = function (c) {
     return Math.round(c * 127);
 };
 //
-// src/out/core/core_containers.js
-//
-var ButtonEvent;
-(function (ButtonEvent) {
-    ButtonEvent[ButtonEvent["Pressed"] = 0] = "Pressed";
-    ButtonEvent[ButtonEvent["Held"] = 1] = "Held";
-    ButtonEvent[ButtonEvent["Released"] = 2] = "Released";
-})(ButtonEvent || (ButtonEvent = {}));
-var ButtonGrid = /** @class */ (function () {
-    function ButtonGrid(width, height) {
-        this.width = width;
-        this.height = height;
-        this.callbacks = new Array(width * height);
-        this.velocities = new Array(width * height);
-        var x, y, idx;
-        for (x = 0; x < width; x++) {
-            for (y = 0; y < height; y++) {
-                idx = index2dTo1d(x, y, width, height);
-                this.callbacks[idx] = function () { };
-                this.velocities[idx] = 0;
-            }
-        }
-    }
-    ButtonGrid.prototype.setCallback = function (x, y, callback) {
-        this.callbacks[index2dTo1d(x, y, this.width, this.height)] = callback;
-    };
-    ButtonGrid.prototype.handleNote = function (x, y, velocity) {
-        var idx = index2dTo1d(x, y, this.width, this.height);
-        var event = null;
-        if (this.velocities[idx] > 0 && velocity == 0) {
-            event = ButtonEvent.Released;
-        }
-        else if (this.velocities[idx] !== velocity) {
-            event = ButtonEvent.Held;
-        }
-        else {
-            event = ButtonEvent.Pressed;
-        }
-        // Update values and trigger callback.
-        this.callbacks[idx](x, y, event, velocity, this.velocities[idx]);
-        this.velocities[idx] = velocity;
-    };
-    return ButtonGrid;
-}());
-//
 // src/out/core/core_math.js
 //
 var index1dTo2d = function (index, width) {
@@ -204,30 +159,6 @@ var NUM_SENDS = 8;
 var NUM_SCENES = 8;
 var BACKGROUND_LIGHT_STRENGTH = 0.1;
 //
-// src/out/controlButtons.js
-//
-var ControlButtons = /** @class */ (function () {
-    function ControlButtons() {
-        this.up = false;
-        this.down = false;
-        this.left = false;
-        this.right = false;
-        this.session = false;
-        this.note = false;
-        this.custom = false;
-        this.record = false;
-        this.volume = false;
-        this.pan = false;
-        this.sendA = false;
-        this.sendB = false;
-        this.stopClip = false;
-        this.mute = false;
-        this.solo = false;
-        this.arm = false;
-    }
-    return ControlButtons;
-}());
-//
 // src/out/gridButtons.js
 //
 var GridButtons = /** @class */ (function () {
@@ -252,185 +183,217 @@ var GridButtons = /** @class */ (function () {
 //
 // src/out/launchpadx.js
 //
-var LaunchpadObject = /** @class */ (function () {
-    function LaunchpadObject() {
-        var _this = this;
-        this.controlButtons = new ControlButtons();
-        this.gridButtons = new GridButtons(8, 8);
-        this.maybeSetGridButtons = function (x, y, isOn) {
-            if (x < 8 && y < 8) {
-                _this.gridButtons.set(x, y, isOn);
-            }
-        };
-        this.maybeSetTopControlButtons = function (x, y, isOn, toggledOn) {
-            if (y == 8 && x >= 0 && x <= 7) {
-                switch (x) {
-                    case 0:
-                        _this.controlButtons.up = isOn;
-                        break;
-                    case 1:
-                        _this.controlButtons.down = isOn;
-                        break;
-                    case 2:
-                        _this.controlButtons.left = isOn;
-                        break;
-                    case 3:
-                        _this.controlButtons.right = isOn;
-                        break;
-                    case 4:
-                        _this.controlButtons.session = isOn;
-                        break;
-                    case 5:
-                        _this.controlButtons.note = isOn;
-                        break;
-                    case 6:
-                        _this.controlButtons.custom = isOn;
-                        break;
-                    case 7:
-                        _this.controlButtons.record = isOn;
-                        break;
-                }
-            }
-        };
-        this.maybeSetSideControlButtons = function (x, y, isOn, toggledOn) {
-            if (x == 8 && y >= 0 && y <= 7) {
-                switch (y) {
-                    case 0:
-                        _this.controlButtons.arm = isOn;
-                        break;
-                    case 1:
-                        _this.controlButtons.solo = isOn;
-                        break;
-                    case 2:
-                        _this.controlButtons.mute = isOn;
-                        break;
-                    case 3:
-                        _this.controlButtons.stopClip = isOn;
-                        break;
-                    case 4:
-                        _this.controlButtons.sendB = isOn;
-                        break;
-                    case 5:
-                        _this.controlButtons.sendA = isOn;
-                        break;
-                    case 6:
-                        _this.controlButtons.pan = isOn;
-                        break;
-                    case 7:
-                        _this.controlButtons.volume = isOn;
-                        break;
-                }
-            }
-        };
-        host.showPopupNotification("Testing pop up noti");
-        var NUM_NOTES = 128;
-        this.prevVelocities = new Array(NUM_NOTES);
-        this.noteVelocities = new Array(NUM_NOTES);
-        for (var i = 0; i < NUM_NOTES; i++) {
-            this.prevVelocities[i] = 0;
-            this.noteVelocities[i] = 0;
-        }
+/*
+class LaunchpadObject {
+  private noteVelocities: Array<number>;
+  private prevVelocities: Array<number>;
+
+  constructor() {
+    const NUM_NOTES = 128;
+    this.prevVelocities = new Array(NUM_NOTES);
+    this.noteVelocities = new Array(NUM_NOTES);
+    for (var i = 0; i < NUM_NOTES; i++) {
+      this.prevVelocities[i] = 0;
+      this.noteVelocities[i] = 0;
     }
-    LaunchpadObject.prototype.flush = function () {
-        var lights = "";
-        // Paint grid
-        {
-            for (var row = 0; row < NUM_SCENES; row++) {
-                for (var col = 0; col < NUM_SCENES; col++) {
-                    // Y needs to be inverted.
-                    var y = 7 - col;
-                    var x_1 = row;
-                    var clip = trackBankHandler.clips[col][row];
-                    var _a = trackBankHandler.colors[col], trackR = _a[0], trackG = _a[1], trackB = _a[2];
-                    lights += clip.hasContent
-                        ? clipLight(x_1, y, clip)
-                        : rgbLight(x_1, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
-                }
-            }
+  }
+
+  flush() {
+    var lights = "";
+
+    // Paint grid
+    {
+      for (var row = 0; row < NUM_SCENES; row++) {
+        for (var col = 0; col < NUM_SCENES; col++) {
+          // Y needs to be inverted.
+          const y = 7 - col;
+          const x = row;
+
+          const clip = trackBankHandler.clips[col][row];
+          const [trackR, trackG, trackB] = trackBankHandler.colors[col];
+
+          lights += clip.hasContent
+            ? clipLight(x, y, clip)
+            : rgbLight(
+                x,
+                y,
+                trackR * BACKGROUND_LIGHT_STRENGTH,
+                trackG * BACKGROUND_LIGHT_STRENGTH,
+                trackB * BACKGROUND_LIGHT_STRENGTH
+              );
         }
-        // Paint side bar
-        {
-            var x_2 = 8;
-            for (var col = 0; col < NUM_SCENES; col++) {
-                var y = col;
-                var _b = trackBankHandler.colors[7 - y], r = _b[0], g = _b[1], b = _b[2];
-                var light_1 = void 0;
-                var isHeld = false;
-                if (isHeld) {
-                    light_1 = staticLight(x_2, y, "50" /* ColorPalette.Purple */);
-                }
-                else if (r === 0 && g === 0 && b === 0) {
-                    light_1 = staticLight(x_2, y, "77" /* ColorPalette.White */);
-                }
-                else {
-                    light_1 = rgbLight(x_2, y, r, g, b);
-                }
-                lights += light_1;
-            }
+      }
+    }
+
+    // Paint side bar
+    {
+      const x = 8;
+      for (var col = 0; col < NUM_SCENES; col++) {
+        const y = col;
+        const [r, g, b] = trackBankHandler.colors[7 - y];
+        let light;
+
+        let isHeld = false;
+
+        if (isHeld) {
+          light = staticLight(x, y, ColorPalette.Purple);
+        } else if (r === 0 && g === 0 && b === 0) {
+          light = staticLight(x, y, ColorPalette.White);
+        } else {
+          light = rgbLight(x, y, r, g, b);
         }
-        // Paint top
-        {
-            var y = 8;
-            for (var x = 0; x < NUM_SCENES; x++) {
-                var y_1 = col;
-                lights += staticLight(x, y_1, "4F" /* ColorPalette.Blue */);
-            }
+
+        lights += light;
+      }
+    }
+
+    // Paint top
+    {
+      const y = 8;
+      for (var x = 0; x < NUM_SCENES; x++) {
+        const y = col;
+        lights += staticLight(x, y, ColorPalette.Blue);
+      }
+    }
+
+    // Paint logo
+    {
+      lights += pulsingLight(8, 8, ColorPalette.HotPink);
+    }
+
+    const sysex = `F0 00 20 29 02 0C 03 ${lights} f7`;
+    sendSysex(sysex);
+  }
+
+  handleMidi(_status: number, note: number, velocity: number) {
+    const x = (note % 10) - 1;
+    const y = Math.floor(note / 10) - 1;
+
+    const prevVelocity = this.noteVelocities[note];
+    this.prevVelocities[note] = prevVelocity;
+    this.noteVelocities[note] = velocity;
+
+    const toggledOn = prevVelocity === 0 && velocity !== 0;
+    const toggledOff = prevVelocity > 0 && velocity === 0;
+
+    const isOn = velocity > 0;
+    const isOff = velocity === 0;
+    const isGridButton = x < 8 && y < 8;
+
+    if (isGridButton) {
+      this.maybeSetGridButtons(x, y, isOn);
+    } else {
+      this.maybeSetTopControlButtons(x, y, isOn, toggledOn);
+      this.maybeSetSideControlButtons(x, y, isOn, toggledOn);
+    }
+
+    if (toggledOn) {
+      if (isGridButton) {
+        const track = trackBankHandler.bank.getItemAt(7 - y);
+        const clipLauncher = track.clipLauncherSlotBank();
+
+        // Select things
+        track.select();
+        clipLauncher.select(x);
+
+        if (this.controlButtons.record) {
+          track.arm().set(true);
+          clipLauncher.record(x);
+        } else if (this.controlButtons.stopClip) {
+          clipLauncher.stop();
+        } else {
+          clipLauncher.launch(x);
         }
-        // Paint logo
-        {
-            lights += pulsingLight(8, 8, "5F" /* ColorPalette.HotPink */);
+      } else {
+        if (this.controlButtons.up) {
+          trackBankHandler.bank.scrollBackwards();
         }
-        var sysex = "F0 00 20 29 02 0C 03 ".concat(lights, " f7");
-        sendSysex(sysex);
-    };
-    LaunchpadObject.prototype.handleMidi = function (_status, note, velocity) {
-        var x = (note % 10) - 1;
-        var y = Math.floor(note / 10) - 1;
-        var prevVelocity = this.noteVelocities[note];
-        this.prevVelocities[note] = prevVelocity;
-        this.noteVelocities[note] = velocity;
-        var toggledOn = prevVelocity === 0 && velocity !== 0;
-        var toggledOff = prevVelocity > 0 && velocity === 0;
-        var isOn = velocity > 0;
-        var isOff = velocity === 0;
-        var isGridButton = x < 8 && y < 8;
-        if (isGridButton) {
-            this.maybeSetGridButtons(x, y, isOn);
+        if (this.controlButtons.down) {
+          trackBankHandler.bank.scrollForwards();
         }
-        else {
-            this.maybeSetTopControlButtons(x, y, isOn, toggledOn);
-            this.maybeSetSideControlButtons(x, y, isOn, toggledOn);
-        }
-        if (toggledOn) {
-            if (isGridButton) {
-                var track = trackBankHandler.bank.getItemAt(7 - y);
-                var clipLauncher = track.clipLauncherSlotBank();
-                // Select things
-                track.select();
-                clipLauncher.select(x);
-                if (this.controlButtons.record) {
-                    track.arm().set(true);
-                    clipLauncher.record(x);
-                }
-                else if (this.controlButtons.stopClip) {
-                    clipLauncher.stop();
-                }
-                else {
-                    clipLauncher.launch(x);
-                }
-            }
-            else {
-                if (this.controlButtons.up) {
-                    trackBankHandler.bank.scrollBackwards();
-                }
-                if (this.controlButtons.down) {
-                    trackBankHandler.bank.scrollForwards();
-                }
-            }
-        }
-    };
-    return LaunchpadObject;
-}());
+      }
+    }
+  }
+
+  private maybeSetGridButtons = (x: number, y: number, isOn: boolean) => {
+    if (x < 8 && y < 8) {
+      this.gridButtons.set(x, y, isOn);
+    }
+  };
+
+  private maybeSetTopControlButtons = (
+    x: number,
+    y: number,
+    isOn: boolean,
+    toggledOn: boolean
+  ) => {
+    if (y == 8 && x >= 0 && x <= 7) {
+      switch (x) {
+        case 0:
+          this.controlButtons.up = isOn;
+          break;
+        case 1:
+          this.controlButtons.down = isOn;
+          break;
+        case 2:
+          this.controlButtons.left = isOn;
+          break;
+        case 3:
+          this.controlButtons.right = isOn;
+          break;
+        case 4:
+          this.controlButtons.session = isOn;
+          break;
+        case 5:
+          this.controlButtons.note = isOn;
+          break;
+        case 6:
+          this.controlButtons.custom = isOn;
+          break;
+        case 7:
+          this.controlButtons.record = isOn;
+          break;
+      }
+    }
+  };
+
+  private maybeSetSideControlButtons = (
+    x: number,
+    y: number,
+    isOn: boolean,
+    toggledOn: boolean
+  ) => {
+    if (x == 8 && y >= 0 && y <= 7) {
+      switch (y) {
+        case 0:
+          this.controlButtons.arm = isOn;
+          break;
+        case 1:
+          this.controlButtons.solo = isOn;
+          break;
+        case 2:
+          this.controlButtons.mute = isOn;
+          break;
+        case 3:
+          this.controlButtons.stopClip = isOn;
+          break;
+        case 4:
+          this.controlButtons.sendB = isOn;
+          break;
+        case 5:
+          this.controlButtons.sendA = isOn;
+          break;
+        case 6:
+          this.controlButtons.pan = isOn;
+          break;
+        case 7:
+          this.controlButtons.volume = isOn;
+          break;
+      }
+    }
+  };
+}
+*/
 //
 // src/out/light.js
 //
@@ -471,6 +434,93 @@ var pulsingLight = function (x, y, color) {
     return light(x, y, "02" /* LightType.Pulsing */, color);
 };
 //
+// src/out/states.js
+//
+var Launchpad;
+(function (Launchpad) {
+    var MAX_X_TILES = 8;
+    var MAX_Y_TILES = 8;
+    var button = function () {
+        return {
+            value: false,
+            previousValue: false,
+        };
+    };
+    var context = function () {
+        return {
+            shouldTransition: function (state) {
+                return false;
+            },
+        };
+    };
+    Launchpad.init = function () {
+        return {
+            context: context(),
+            lightDisplay: new LightDisplay(),
+            inputs: {
+                controlButtons: {
+                    directional: {
+                        up: button(),
+                        down: button(),
+                        left: button(),
+                        right: button(),
+                    },
+                    session: button(),
+                    note: button(),
+                    custom: button(),
+                    captureMidi: button(),
+                    volume: button(),
+                    pan: button(),
+                    sendA: button(),
+                    sendB: button(),
+                    stopClip: button(),
+                    mute: button(),
+                    solo: button(),
+                    recordArm: button(),
+                },
+                buttonGrid: {},
+            },
+        };
+    };
+    Launchpad.render = function (state) { };
+    var LightDisplay = /** @class */ (function () {
+        function LightDisplay() {
+            this.sysex = "";
+            this.initialize();
+        }
+        LightDisplay.prototype.initialize = function () {
+            this.sysex = "";
+        };
+        LightDisplay.prototype.send = function () {
+            sendSysex(this.sysex);
+        };
+        return LightDisplay;
+    }());
+    Launchpad.handle_midi = function (state, status, note, velocity) {
+        println("MIDI: ".concat(status, " - ").concat(note, " - ").concat(velocity));
+        mapMidiToButton(state, status, note, velocity);
+        if (state.context.shouldTransition(state)) {
+        }
+    };
+    var mapMidiToButton = function (state, status, note, velocity) {
+        var x = (note % 10) - 1;
+        var y = Math.floor(note / 10) - 1;
+        var isGridButton = x < MAX_X_TILES && y < MAX_Y_TILES;
+        if (isGridButton) {
+            updateButtonGrid(state.inputs.buttonGrid, x, y, velocity);
+        }
+        else {
+            updateControlButtons(state.inputs.controlButtons, x, y, velocity);
+        }
+    };
+    var updateControlButtons = function (ctl, x, y, value) {
+        println("need to update control buttons.");
+    };
+    var updateButtonGrid = function (grid, x, y, value) {
+        println("need to update button grid.");
+    };
+})(Launchpad || (Launchpad = {}));
+//
 // src/out/launchpadX.control.js
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -488,26 +538,26 @@ host.addDeviceNameBasedDiscoveryPair(["LPX MIDI"], ["LPX MIDI"]);
 //TODO: need to add in more named discovery pairs.
 var transportHandler;
 var trackBankHandler;
-var launchpad;
+var state;
 var init = function () {
     sendSysex("F0 00 20 29 02 0C 00 7F F7" /* Sysex.programmerMode */);
     var inputPort = host.getMidiInPort(0);
     inputPort.setMidiCallback(onMidi);
     inputPort.setSysexCallback(onSysex);
-    launchpad = new LaunchpadObject();
+    state = Launchpad.init();
     transportHandler = new TransportHandler(host);
     trackBankHandler = new TrackHandler(host, "LPX_TrackHandler", "LPX_TrackHandler_Cursor", NUM_TRACKS, NUM_SCENES, NUM_SENDS);
 };
 // Called when a short MIDI message is received on MIDI input port 0.
 function onMidi(status, note, velocity) {
-    launchpad.handleMidi(status, note, velocity);
+    Launchpad.handle_midi(state, status, note, velocity);
 }
 // Called when a MIDI sysex message is received on MIDI input port 0.
 function onSysex(data) {
-    println("sysex: ".concat(data));
+    // println(`sysex: ${data}`);
 }
 function flush() {
-    launchpad.flush();
+    Launchpad.render(state);
 }
 var exit = function () {
     sendSysex("F0 00 20 29 02 0C 00 00 F7" /* Sysex.sessionMode */);

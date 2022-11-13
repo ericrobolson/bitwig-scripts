@@ -1,9 +1,9 @@
-- [x] Wire up reading of colors
-- [x] Wire up displaying of clip colors
-- [x] Wire up displaying of track colors on grid if no clips present. Make the RGB about 40% of the strength.
-- [x] Wire up playing of clips
-- [x] Wire up stopping of clips
-- [x] Wire up recording of clips
+- [ ] Wire up displaying of clip colors
+- [ ] Wire up reading of colors
+- [ ] Wire up displaying of track colors on grid if no clips present. Make the RGB about 40% of the strength.
+- [ ] Wire up playing of clips
+- [ ] Wire up stopping of clips
+- [ ] Wire up recording of clips
 - [ ] Fix bug with recording on tap. Should need to do something else.
 - [ ] Arrange mode navigation: up/down on window + lpad
 - [ ] Arrange mode navigation: left/right

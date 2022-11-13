@@ -1,8 +1,7 @@
+/*
 class LaunchpadObject {
   private noteVelocities: Array<number>;
   private prevVelocities: Array<number>;
-  private controlButtons: ControlButtons = new ControlButtons();
-  private gridButtons: GridButtons = new GridButtons(8, 8);
 
   constructor() {
     const NUM_NOTES = 128;
@@ -209,3 +208,4 @@ class LaunchpadObject {
     }
   };
 }
+*/
