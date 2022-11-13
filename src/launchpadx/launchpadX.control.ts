@@ -42,7 +42,8 @@ const init = () => {
     "LPX_TrackHandler_Cursor",
     NUM_TRACKS,
     NUM_SCENES,
-    NUM_SENDS
+    NUM_SENDS,
+    true
   );
 };
 

@@ -24,7 +24,8 @@ class TrackHandler {
     name: string,
     numTracks: number,
     numSends: number,
-    numScenes: number
+    numScenes: number,
+    showIndications: boolean
   ) {
     this.colors = new Array(numTracks);
     this.clips = new Array(numTracks);
@@ -52,6 +53,7 @@ class TrackHandler {
       // Clip data
       {
         const clipLauncher = track.clipLauncherSlotBank();
+
         var clips = new Array(numScenes);
         for (var j = 0; j < numScenes; j++) {
           clips[j] = new Clip();
@@ -106,5 +108,7 @@ class TrackHandler {
     this.bank.followCursorTrack(this.cursor);
     this.cursor.solo().markInterested();
     this.cursor.mute().markInterested();
+
+    this.bank.sceneBank().setIndication(showIndications);
   }
 }

@@ -93,6 +93,10 @@ var index2dTo1d = function (x, y, width, height) {
     return (y % height) * width + (x % width);
 };
 //
+// src/out/core/core_scenes.js
+//
+
+//
 // src/out/core/core_trackHandler.js
 //
 var Clip = /** @class */ (function () {
@@ -109,7 +113,7 @@ var Clip = /** @class */ (function () {
     return Clip;
 }());
 var TrackHandler = /** @class */ (function () {
-    function TrackHandler(host, id, name, numTracks, numSends, numScenes) {
+    function TrackHandler(host, id, name, numTracks, numSends, numScenes, showIndications) {
         var _this = this;
         this.colors = new Array(numTracks);
         this.clips = new Array(numTracks);
@@ -184,6 +188,7 @@ var TrackHandler = /** @class */ (function () {
         this.bank.followCursorTrack(this.cursor);
         this.cursor.solo().markInterested();
         this.cursor.mute().markInterested();
+        this.bank.sceneBank().setIndication(showIndications);
     }
     return TrackHandler;
 }());
@@ -252,18 +257,20 @@ var GridButtons = /** @class */ (function () {
 //
 // src/out/launchpadx.js
 //
+var GRID_WIDTH = 8;
+var GRID_HEIGHT = 8;
+var NUM_NOTES = 128;
 var LaunchpadObject = /** @class */ (function () {
     function LaunchpadObject() {
         var _this = this;
-        this.controlButtons = new ControlButtons();
-        this.gridButtons = new GridButtons(8, 8);
+        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
         this.maybeSetGridButtons = function (x, y, isOn) {
-            if (x < 8 && y < 8) {
+            if (x < GRID_WIDTH && y < GRID_HEIGHT) {
                 _this.gridButtons.set(x, y, isOn);
             }
         };
         this.maybeSetTopControlButtons = function (x, y, isOn, toggledOn) {
-            if (y == 8 && x >= 0 && x <= 7) {
+            if (y == GRID_WIDTH && x >= 0 && x < GRID_WIDTH) {
                 switch (x) {
                     case 0:
                         _this.controlButtons.up = isOn;
@@ -293,7 +300,7 @@ var LaunchpadObject = /** @class */ (function () {
             }
         };
         this.maybeSetSideControlButtons = function (x, y, isOn, toggledOn) {
-            if (x == 8 && y >= 0 && y <= 7) {
+            if (x == GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
                 switch (y) {
                     case 0:
                         _this.controlButtons.arm = isOn;
@@ -322,66 +329,20 @@ var LaunchpadObject = /** @class */ (function () {
                 }
             }
         };
-        var NUM_NOTES = 128;
         this.prevVelocities = new Array(NUM_NOTES);
         this.noteVelocities = new Array(NUM_NOTES);
         for (var i = 0; i < NUM_NOTES; i++) {
             this.prevVelocities[i] = 0;
             this.noteVelocities[i] = 0;
         }
+        var previousLightsSize = GRID_WIDTH * GRID_HEIGHT;
+        this.previousLights = new Array(previousLightsSize);
+        for (var i = 0; i < previousLightsSize; i++) {
+            this.previousLights[i] = "";
+        }
+        this.controlButtons = new ControlButtons();
+        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
     }
-    LaunchpadObject.prototype.flush = function () {
-        var lights = "";
-        // Paint grid
-        {
-            for (var row = 0; row < NUM_SCENES; row++) {
-                for (var col = 0; col < NUM_SCENES; col++) {
-                    // Y needs to be inverted.
-                    var y = 7 - col;
-                    var x_1 = row;
-                    var clip = trackBankHandler.clips[col][row];
-                    var _a = trackBankHandler.colors[col], trackR = _a[0], trackG = _a[1], trackB = _a[2];
-                    lights += clip.hasContent
-                        ? clipLight(x_1, y, clip)
-                        : rgbLight(x_1, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
-                }
-            }
-        }
-        // Paint side bar
-        {
-            var x_2 = 8;
-            for (var col = 0; col < NUM_SCENES; col++) {
-                var y = col;
-                var _b = trackBankHandler.colors[7 - y], r = _b[0], g = _b[1], b = _b[2];
-                var light_1 = void 0;
-                var isHeld = false;
-                if (isHeld) {
-                    light_1 = staticLight(x_2, y, "50" /* ColorPalette.Purple */);
-                }
-                else if (r === 0 && g === 0 && b === 0) {
-                    light_1 = staticLight(x_2, y, "77" /* ColorPalette.White */);
-                }
-                else {
-                    light_1 = rgbLight(x_2, y, r, g, b);
-                }
-                lights += light_1;
-            }
-        }
-        // Paint top
-        {
-            var y = 8;
-            for (var x = 0; x < NUM_SCENES; x++) {
-                var y_1 = col;
-                lights += staticLight(x, y_1, "4F" /* ColorPalette.Blue */);
-            }
-        }
-        // Paint logo
-        {
-            lights += pulsingLight(8, 8, "5F" /* ColorPalette.HotPink */);
-        }
-        var sysex = "F0 00 20 29 02 0C 03 ".concat(lights, " f7");
-        sendSysex(sysex);
-    };
     LaunchpadObject.prototype.handleMidi = function (_status, note, velocity) {
         var x = (note % 10) - 1;
         var y = Math.floor(note / 10) - 1;
@@ -407,7 +368,6 @@ var LaunchpadObject = /** @class */ (function () {
                 // Select things
                 track.select();
                 clipLauncher.select(x);
-                println("toggle: ".concat(this.controlButtons.record));
                 if (this.controlButtons.record) {
                     clipLauncher.record(x);
                 }
@@ -421,17 +381,101 @@ var LaunchpadObject = /** @class */ (function () {
                 else {
                     // TODO: need to differentiate between get item at and launch
                     clipLauncher.launch(x);
-                    clipLauncher.getItemAt(x);
+                    // clipLauncher.getItemAt(x);
                 }
             }
             else {
                 if (this.controlButtons.up) {
                     trackBankHandler.bank.scrollBackwards();
                 }
-                if (this.controlButtons.down) {
+                else if (this.controlButtons.down) {
                     trackBankHandler.bank.scrollForwards();
                 }
+                if (this.controlButtons.left) {
+                    trackBankHandler.bank.sceneBank().scrollBackwards();
+                }
+                else if (this.controlButtons.right) {
+                    trackBankHandler.bank.sceneBank().scrollForwards();
+                }
             }
+        }
+    };
+    LaunchpadObject.prototype.flush = function () {
+        var lights = "";
+        var lightIndex = 0;
+        var changedLights = 0;
+        // Paint grid
+        {
+            for (var row = 0; row < NUM_SCENES; row++) {
+                for (var col = 0; col < NUM_SCENES; col++) {
+                    // Y needs to be inverted.
+                    var y = 7 - col;
+                    var x_1 = row;
+                    var clip = trackBankHandler.clips[col][row];
+                    var _a = trackBankHandler.colors[col], trackR = _a[0], trackG = _a[1], trackB = _a[2];
+                    var light_1 = clip.hasContent
+                        ? clipLight(x_1, y, clip)
+                        : rgbLight(x_1, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
+                    if (this.previousLights[lightIndex] !== light_1) {
+                        lights += light_1;
+                        this.previousLights[lightIndex] = light_1;
+                        changedLights += 1;
+                    }
+                    lightIndex += 1;
+                }
+            }
+        }
+        // Paint side bar
+        {
+            var x_2 = GRID_WIDTH;
+            for (var col = 0; col < NUM_SCENES; col++) {
+                var y = col;
+                var _b = trackBankHandler.colors[7 - y], r = _b[0], g = _b[1], b = _b[2];
+                var light_2 = void 0;
+                var isHeld = false;
+                if (isHeld) {
+                    light_2 = staticLight(x_2, y, "50" /* ColorPalette.Purple */);
+                }
+                else if (r === 0 && g === 0 && b === 0) {
+                    light_2 = staticLight(x_2, y, "77" /* ColorPalette.White */);
+                }
+                else {
+                    light_2 = rgbLight(x_2, y, r, g, b);
+                }
+                if (this.previousLights[lightIndex] !== light_2) {
+                    lights += light_2;
+                    this.previousLights[lightIndex] = light_2;
+                    changedLights += 1;
+                }
+                lightIndex += 1;
+            }
+        }
+        // Paint top
+        {
+            var y = GRID_HEIGHT;
+            for (var x = 0; x < NUM_SCENES; x++) {
+                var light_3 = staticLight(x, y, "4F" /* ColorPalette.Blue */);
+                if (this.previousLights[lightIndex] !== light_3) {
+                    lights += light_3;
+                    this.previousLights[lightIndex] = light_3;
+                    changedLights += 1;
+                }
+                lightIndex += 1;
+            }
+        }
+        // Paint logo
+        {
+            var light_4 = pulsingLight(8, 8, "5F" /* ColorPalette.HotPink */);
+            if (this.previousLights[lightIndex] !== light_4) {
+                lights += light_4;
+                this.previousLights[lightIndex] = light_4;
+                changedLights += 1;
+            }
+            lightIndex += 1;
+        }
+        if (changedLights > 0) {
+            var sysex = "F0 00 20 29 02 0C 03 ".concat(lights, " f7");
+            sendSysex(sysex);
         }
     };
     return LaunchpadObject;
@@ -501,7 +545,7 @@ var init = function () {
     inputPort.setSysexCallback(onSysex);
     launchpad = new LaunchpadObject();
     transportHandler = new TransportHandler(host);
-    trackBankHandler = new TrackHandler(host, "LPX_TrackHandler", "LPX_TrackHandler_Cursor", NUM_TRACKS, NUM_SCENES, NUM_SENDS);
+    trackBankHandler = new TrackHandler(host, "LPX_TrackHandler", "LPX_TrackHandler_Cursor", NUM_TRACKS, NUM_SCENES, NUM_SENDS, true);
 };
 // Called when a short MIDI message is received on MIDI input port 0.
 function onMidi(status, note, velocity) {

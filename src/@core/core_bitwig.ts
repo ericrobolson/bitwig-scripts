@@ -155,7 +155,31 @@ interface MidiInPort {
   setSysexCallback(callback: (data: string) => void): void;
   createNoteInput: Function;
 }
+
+interface Scene {}
+
+// file:///C:/Program%20Files/Bitwig%20Studio/4.4.2/resources/doc/control-surface/api/a01753.html
+interface SceneBank {
+  getScene(index: number): Scene;
+  scrollForwards(): void;
+  scrollBackwards(): void;
+  scrollPageForwards(): void;
+  scrollPageBackwards(): void;
+  setIndication(shouldIndicate: boolean): void;
+
+  /*
+void 	addScrollPositionObserver (IntegerValueChangedCallback callback, int valueWhenUnassigned)
+ void 	addCanScrollUpObserver (BooleanValueChangedCallback callback)
+ void 	addCanScrollDownObserver (BooleanValueChangedCallback callback)
+ void 	addSceneCountObserver (IntegerValueChangedCallback callback)
+ void 	launchScene (int indexInWindow)
+ void 	setIndication (boolean shouldIndicate)
+  */
+}
+
 interface TrackBank {
+  sceneBank(): SceneBank;
+
   scrollForwards(): void;
   scrollBackwards(): void;
 
@@ -165,8 +189,8 @@ interface TrackBank {
   scrollScenesUp(): void;
   scrollScenesDown(): void;
 
-  scrollTracksUp(): void;
-  scrollTrackDown(): void;
+  scrollChannelsUp(): void;
+  scrollChannelsDown(): void;
 
   scrollToTrack(trackIdx: number): void;
 
