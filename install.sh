@@ -88,7 +88,8 @@ for controlFile in src/out/*.control.js; do
     done
 
     # Any other JS files
-    for utilFile in src/out/*.js src/out/**/*.js; do
+    echo "If you are missing any files ensure that you're sourcing them before appending them to the file."
+    for utilFile in src/out/*.js src/out/**/*.js src/out/**/**/*.js; do
         if [[ "$utilFile" != "$controlFile" ]]; then
             echo "//" >> $NEW_TARGET
             echo "// $utilFile" >> $NEW_TARGET
@@ -97,6 +98,7 @@ for controlFile in src/out/*.control.js; do
             echo "- $utilFile done"
         fi
     done
+
 
     echo "//" >> $NEW_TARGET
     echo "// $controlFile" >> $NEW_TARGET

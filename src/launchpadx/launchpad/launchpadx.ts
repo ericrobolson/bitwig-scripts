@@ -1,14 +1,19 @@
+/**
+ * A class representing a Launchpad object.
+ */
 class LaunchpadObject {
   private noteVelocities: Array<number>;
   private prevVelocities: Array<number>;
   private previousLights: Array<string>;
-  private controlButtons: ControlButtons;
+  private controlButtonState: ControlButtons;
   private gridButtons: GridButtons;
-  private state: State;
+  private context: Context;
+  private contextPrevious: Context | null;
   private renderer: Renderer & RenderQueue;
 
   constructor() {
-    this.state = DefaultArrangeState;
+    this.contextPrevious = null;
+    this.context = ContextArrange;
     this.renderer = new LaunchpadRenderer(GRID_WIDTH, GRID_HEIGHT);
     this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
 
@@ -25,10 +30,39 @@ class LaunchpadObject {
       this.previousLights[i] = "";
     }
 
-    this.controlButtons = new ControlButtons();
+    this.controlButtonState = new ControlButtons();
     this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
   }
 
+  /**
+   * Returns the panel layout for the DAW.
+   */
+  layout(): PanelLayout {
+    return applicationHandler.layout();
+  }
+
+  /**
+   * Returns the control button state.
+   * @returns the control button state.
+   */
+  controlButtons(): ControlButtons {
+    return this.controlButtonState;
+  }
+
+  /**
+   * Returns the last context page.
+   * @returns
+   */
+  lastContext(): Context {
+    return this.contextPrevious ? this.contextPrevious : ContextArrange;
+  }
+
+  /**
+   * Callback for handling midi notes.
+   * @param _status
+   * @param note
+   * @param velocity
+   */
   handleMidi(_status: number, note: number, velocity: number) {
     const x = (note % 10) - 1;
     const y = Math.floor(note / 10) - 1;
@@ -41,194 +75,117 @@ class LaunchpadObject {
     const toggledOff = prevVelocity > 0 && velocity === 0;
 
     const isOn = velocity > 0;
-    const isOff = velocity === 0;
-    const isGridButton = x < 8 && y < 8;
+    const isGridButton = x < GRID_WIDTH && y < GRID_HEIGHT;
 
     if (isGridButton) {
-      this.maybeSetGridButtons(x, y, isOn);
+      this.gridButtons.set(x, y, isOn);
     } else {
-      this.maybeSetTopControlButtons(x, y, isOn, toggledOn);
-      this.maybeSetSideControlButtons(x, y, isOn, toggledOn);
+      this.maybeSetControlButtons(x, y, isOn);
     }
 
-    //
-    // This should be moved to transition state
-    //
-    {
-      if (toggledOn) {
-        if (isGridButton) {
-          const track = trackBankHandler.bank.getItemAt(7 - y);
-          const clipLauncher = track.clipLauncherSlotBank();
-
-          // Select things
-          track.select();
-          clipLauncher.select(x);
-          if (this.controlButtons.record) {
-            clipLauncher.record(x);
-          } else if (this.controlButtons.stopClip) {
-            clipLauncher.stop();
-          } else if (this.controlButtons.custom) {
-            // delete clip
-            clipLauncher.getItemAt(x).deleteObject();
-          } else {
-            // TODO: need to differentiate between get item at and launch
-            clipLauncher.launch(x);
-            // clipLauncher.getItemAt(x);
-          }
-        } else {
-          if (this.controlButtons.up) {
-            trackBankHandler.bank.scrollBackwards();
-          } else if (this.controlButtons.down) {
-            trackBankHandler.bank.scrollForwards();
-          }
-
-          if (this.controlButtons.left) {
-            trackBankHandler.bank.sceneBank().scrollBackwards();
-          } else if (this.controlButtons.right) {
-            trackBankHandler.bank.sceneBank().scrollForwards();
-          }
-        }
-      }
+    var buttonState = ButtonState.Off;
+    if (toggledOn) {
+      buttonState = ButtonState.ToggledOn;
+    } else if (toggledOff) {
+      buttonState = ButtonState.ToggledOff;
+    } else if (isOn) {
+      buttonState = ButtonState.On;
     }
-    //
-    //
-    //
 
-    this.state = this.state.transition(this);
+    var newContext = this.context.transition(
+      this,
+      note,
+      velocity,
+      prevVelocity,
+      buttonState,
+      x,
+      y,
+      isGridButton
+    );
+
+    if (newContext === null) {
+      newContext = contextDefaultTransition(this, this.context);
+    }
+
+    if (this.context.shouldReplaceHistory()) {
+      this.contextPrevious = this.context;
+    }
+
+    this.context = newContext;
   }
 
+  /**
+   * Flushes the Launchpad, performing any rendering updates.
+   */
   flush() {
-    this.state.render(this, this.renderer);
+    this.context.render(this, this.renderer);
     this.renderer.present();
   }
 
-  private maybeSetGridButtons = (x: number, y: number, isOn: boolean) => {
-    if (x < GRID_WIDTH && y < GRID_HEIGHT) {
-      this.gridButtons.set(x, y, isOn);
-    }
-  };
-
-  private maybeSetTopControlButtons = (
-    x: number,
-    y: number,
-    isOn: boolean,
-    toggledOn: boolean
-  ) => {
+  /**
+   * Attempts to set a control button's state.
+   * @param x
+   * @param y
+   * @param isOn
+   */
+  private maybeSetControlButtons = (x: number, y: number, isOn: boolean) => {
+    // Set top row
     if (y == GRID_WIDTH && x >= 0 && x < GRID_WIDTH) {
       switch (x) {
         case 0:
-          this.controlButtons.up = isOn;
+          this.controlButtonState.up = isOn;
           break;
         case 1:
-          this.controlButtons.down = isOn;
+          this.controlButtonState.down = isOn;
           break;
         case 2:
-          this.controlButtons.left = isOn;
+          this.controlButtonState.left = isOn;
           break;
         case 3:
-          this.controlButtons.right = isOn;
+          this.controlButtonState.right = isOn;
           break;
         case 4:
-          this.controlButtons.session = isOn;
+          this.controlButtonState.session = isOn;
           break;
         case 5:
-          this.controlButtons.note = isOn;
+          this.controlButtonState.note = isOn;
           break;
         case 6:
-          this.controlButtons.custom = isOn;
+          this.controlButtonState.custom = isOn;
           break;
         case 7:
-          this.controlButtons.record = isOn;
+          this.controlButtonState.record = isOn;
           break;
       }
     }
-  };
-
-  private maybeSetSideControlButtons = (
-    x: number,
-    y: number,
-    isOn: boolean,
-    toggledOn: boolean
-  ) => {
-    if (x == GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+    // Set side buttons
+    else if (x == GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
       switch (y) {
         case 0:
-          this.controlButtons.arm = isOn;
+          this.controlButtonState.recordArm = isOn;
           break;
         case 1:
-          this.controlButtons.solo = isOn;
+          this.controlButtonState.solo = isOn;
           break;
         case 2:
-          this.controlButtons.mute = isOn;
+          this.controlButtonState.mute = isOn;
           break;
         case 3:
-          this.controlButtons.stopClip = isOn;
+          this.controlButtonState.stopClip = isOn;
           break;
         case 4:
-          this.controlButtons.sendB = isOn;
+          this.controlButtonState.sendB = isOn;
           break;
         case 5:
-          this.controlButtons.sendA = isOn;
+          this.controlButtonState.sendA = isOn;
           break;
         case 6:
-          this.controlButtons.pan = isOn;
+          this.controlButtonState.pan = isOn;
           break;
         case 7:
-          this.controlButtons.volume = isOn;
+          this.controlButtonState.volume = isOn;
           break;
       }
     }
   };
 }
-
-const Buttons = {
-  isUp(x: number, y: number): boolean {
-    return x == 0 && y == GRID_HEIGHT;
-  },
-  isDown(x: number, y: number): boolean {
-    return x == 1 && y == GRID_HEIGHT;
-  },
-  isLeft(x: number, y: number): boolean {
-    return x == 2 && y == GRID_HEIGHT;
-  },
-  isRight(x: number, y: number): boolean {
-    return x == 3 && y == GRID_HEIGHT;
-  },
-
-  isSession(x: number, y: number): boolean {
-    return x == 4 && y == GRID_HEIGHT;
-  },
-  isNote(x: number, y: number): boolean {
-    return x == 5 && y == GRID_HEIGHT;
-  },
-  isCustom(x: number, y: number): boolean {
-    return x == 6 && y == GRID_HEIGHT;
-  },
-  isCaptureMidi(x: number, y: number): boolean {
-    return x == 7 && y == GRID_HEIGHT;
-  },
-  isVolume(x: number, y: number): boolean {
-    return x == GRID_WIDTH && y == 7;
-  },
-  isPan(x: number, y: number): boolean {
-    return x == GRID_WIDTH && y == 6;
-  },
-  isSendA(x: number, y: number): boolean {
-    return x == GRID_WIDTH && y == 5;
-  },
-  isSendB(x: number, y: number): boolean {
-    return x == GRID_WIDTH && y == 4;
-  },
-  isStopClip(x: number, y: number): boolean {
-    return x == GRID_WIDTH && y == 3;
-  },
-  isMute(x: number, y: number): boolean {
-    return x == GRID_WIDTH && y == 2;
-  },
-  isSolo(x: number, y: number): boolean {
-    return x == GRID_WIDTH && y == 1;
-  },
-  isRecordArm(x: number, y: number): boolean {
-    return x == GRID_WIDTH && y == 0;
-  },
-};

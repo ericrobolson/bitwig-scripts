@@ -1,20 +1,50 @@
-enum StateType {
-  EmptyArrange,
-}
-
-interface State {
-  type(): StateType;
-  transition(lp: LaunchpadObject): State;
-  render(lp: LaunchpadObject, renderQueue: RenderQueue): void;
-}
-const DefaultArrangeState: State = {
-  type(): StateType {
-    return StateType.EmptyArrange;
+const ContextArrange: Context = {
+  title(): string {
+    return "ContextArrange";
   },
-  transition(lp: LaunchpadObject): State {
-    return this;
+  shouldReplaceHistory() {
+    return true;
+  },
+  transition(
+    lp: LaunchpadObject,
+    note: number,
+    velocity: number,
+    prevVelocity: number,
+    state: ButtonState,
+    x: number,
+    y: number,
+    isGridButton: boolean
+  ): Context | null {
+    const controlButtons = lp.controlButtons();
+
+    if (state == ButtonState.ToggledOn && isGridButton) {
+      const track = trackBankHandler.bank.getItemAt(7 - y);
+      const clipLauncher = track.clipLauncherSlotBank();
+
+      // Select things
+
+      // track.select();
+      // clipLauncher.select(x);
+
+      if (controlButtons.record) {
+        clipLauncher.record(x);
+      } else if (controlButtons.stopClip) {
+        clipLauncher.stop();
+      } else if (controlButtons.custom) {
+        // delete clip
+        clipLauncher.getItemAt(x).deleteObject();
+      } else {
+        clipLauncher.launch(x);
+      }
+
+      return this;
+    }
+
+    return null;
   },
   render(lp: LaunchpadObject, renderer: RenderQueue) {
+    const controlButtons = lp.controlButtons();
+
     // Paint grid
     {
       for (var row = 0; row < NUM_SCENES; row++) {
@@ -68,9 +98,9 @@ const DefaultArrangeState: State = {
     {
       const y = GRID_HEIGHT;
       for (var x = 0; x < NUM_SCENES; x++) {
-        if (Buttons.isUp(x, y)) {
+        if (controlButtons.isUp(x, y)) {
           renderer.staticLight(x, y, ColorPalette.Purple);
-        } else if (Buttons.isCaptureMidi(x, y)) {
+        } else if (controlButtons.isCaptureMidi(x, y)) {
           renderer.staticLight(x, y, ColorPalette.RedDarker);
         } else {
           renderer.staticLight(x, y, ColorPalette.Blue);

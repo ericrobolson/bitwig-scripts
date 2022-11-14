@@ -1,3 +1,10 @@
+enum ButtonState {
+  ToggledOn,
+  ToggledOff,
+  On,
+  Off,
+}
+
 const enum Sysex {
   programmerMode = "F0 00 20 29 02 0C 00 7F F7",
   sessionMode = "F0 00 20 29 02 0C 00 00 F7",

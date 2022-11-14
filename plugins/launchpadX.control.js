@@ -180,6 +180,13 @@ var index2dTo1d = function (x, y, width, height) {
 //
 // src/out/consts.js
 //
+var ButtonState;
+(function (ButtonState) {
+    ButtonState[ButtonState["ToggledOn"] = 0] = "ToggledOn";
+    ButtonState[ButtonState["ToggledOff"] = 1] = "ToggledOff";
+    ButtonState[ButtonState["On"] = 2] = "On";
+    ButtonState[ButtonState["Off"] = 3] = "Off";
+})(ButtonState || (ButtonState = {}));
 var NUM_TRACKS = 8;
 var NUM_SENDS = 8;
 var NUM_SCENES = 8;
@@ -190,6 +197,9 @@ var BACKGROUND_LIGHT_STRENGTH = 0.1;
 //
 // src/out/controlButtons.js
 //
+/**
+ * State representing a Launchpad's Control Buttons.
+ */
 var ControlButtons = /** @class */ (function () {
     function ControlButtons() {
         this.up = false;
@@ -207,8 +217,56 @@ var ControlButtons = /** @class */ (function () {
         this.stopClip = false;
         this.mute = false;
         this.solo = false;
-        this.arm = false;
+        this.recordArm = false;
     }
+    ControlButtons.prototype.isUp = function (x, y) {
+        return x == 0 && y == GRID_HEIGHT;
+    };
+    ControlButtons.prototype.isDown = function (x, y) {
+        return x == 1 && y == GRID_HEIGHT;
+    };
+    ControlButtons.prototype.isLeft = function (x, y) {
+        return x == 2 && y == GRID_HEIGHT;
+    };
+    ControlButtons.prototype.isRight = function (x, y) {
+        return x == 3 && y == GRID_HEIGHT;
+    };
+    ControlButtons.prototype.isSession = function (x, y) {
+        return x == 4 && y == GRID_HEIGHT;
+    };
+    ControlButtons.prototype.isNote = function (x, y) {
+        return x == 5 && y == GRID_HEIGHT;
+    };
+    ControlButtons.prototype.isCustom = function (x, y) {
+        return x == 6 && y == GRID_HEIGHT;
+    };
+    ControlButtons.prototype.isCaptureMidi = function (x, y) {
+        return x == 7 && y == GRID_HEIGHT;
+    };
+    ControlButtons.prototype.isVolume = function (x, y) {
+        return x == GRID_WIDTH && y == 7;
+    };
+    ControlButtons.prototype.isPan = function (x, y) {
+        return x == GRID_WIDTH && y == 6;
+    };
+    ControlButtons.prototype.isSendA = function (x, y) {
+        return x == GRID_WIDTH && y == 5;
+    };
+    ControlButtons.prototype.isSendB = function (x, y) {
+        return x == GRID_WIDTH && y == 4;
+    };
+    ControlButtons.prototype.isStopClip = function (x, y) {
+        return x == GRID_WIDTH && y == 3;
+    };
+    ControlButtons.prototype.isMute = function (x, y) {
+        return x == GRID_WIDTH && y == 2;
+    };
+    ControlButtons.prototype.isSolo = function (x, y) {
+        return x == GRID_WIDTH && y == 1;
+    };
+    ControlButtons.prototype.isRecordArm = function (x, y) {
+        return x == GRID_WIDTH && y == 0;
+    };
     return ControlButtons;
 }());
 //
@@ -501,230 +559,82 @@ var index2dTo1d = function (x, y, width, height) {
     return (y % height) * width + (x % width);
 };
 //
-// src/out/launchpad/launchpadx.js
+// src/out/launchpad/context.js
 //
-var LaunchpadObject = /** @class */ (function () {
-    function LaunchpadObject() {
-        var _this = this;
-        this.maybeSetGridButtons = function (x, y, isOn) {
-            if (x < GRID_WIDTH && y < GRID_HEIGHT) {
-                _this.gridButtons.set(x, y, isOn);
-            }
-        };
-        this.maybeSetTopControlButtons = function (x, y, isOn, toggledOn) {
-            if (y == GRID_WIDTH && x >= 0 && x < GRID_WIDTH) {
-                switch (x) {
-                    case 0:
-                        _this.controlButtons.up = isOn;
-                        break;
-                    case 1:
-                        _this.controlButtons.down = isOn;
-                        break;
-                    case 2:
-                        _this.controlButtons.left = isOn;
-                        break;
-                    case 3:
-                        _this.controlButtons.right = isOn;
-                        break;
-                    case 4:
-                        _this.controlButtons.session = isOn;
-                        break;
-                    case 5:
-                        _this.controlButtons.note = isOn;
-                        break;
-                    case 6:
-                        _this.controlButtons.custom = isOn;
-                        break;
-                    case 7:
-                        _this.controlButtons.record = isOn;
-                        break;
-                }
-            }
-        };
-        this.maybeSetSideControlButtons = function (x, y, isOn, toggledOn) {
-            if (x == GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-                switch (y) {
-                    case 0:
-                        _this.controlButtons.arm = isOn;
-                        break;
-                    case 1:
-                        _this.controlButtons.solo = isOn;
-                        break;
-                    case 2:
-                        _this.controlButtons.mute = isOn;
-                        break;
-                    case 3:
-                        _this.controlButtons.stopClip = isOn;
-                        break;
-                    case 4:
-                        _this.controlButtons.sendB = isOn;
-                        break;
-                    case 5:
-                        _this.controlButtons.sendA = isOn;
-                        break;
-                    case 6:
-                        _this.controlButtons.pan = isOn;
-                        break;
-                    case 7:
-                        _this.controlButtons.volume = isOn;
-                        break;
-                }
-            }
-        };
-        this.state = DefaultArrangeState;
-        this.renderer = new LaunchpadRenderer(GRID_WIDTH, GRID_HEIGHT);
-        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
-        this.prevVelocities = new Array(NUM_NOTES);
-        this.noteVelocities = new Array(NUM_NOTES);
-        for (var i = 0; i < NUM_NOTES; i++) {
-            this.prevVelocities[i] = 0;
-            this.noteVelocities[i] = 0;
+/**
+ * Default, system wide transitions.
+ * @param lp
+ * @param context
+ * @returns
+ */
+var contextDefaultTransition = function (lp, context) {
+    var controlButtons = lp.controlButtons();
+    // Non navigation control buttons
+    {
+        if (controlButtons.volume) {
+            return ContextVolume;
         }
-        var previousLightsSize = GRID_WIDTH * GRID_HEIGHT;
-        this.previousLights = new Array(previousLightsSize);
-        for (var i = 0; i < previousLightsSize; i++) {
-            this.previousLights[i] = "";
+        else if (controlButtons.recordArm) {
+            return ContextRecordArm;
         }
-        this.controlButtons = new ControlButtons();
-        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+        else if (controlButtons.pan) {
+            return ContextPanControl;
+        }
     }
-    LaunchpadObject.prototype.handleMidi = function (_status, note, velocity) {
-        var x = (note % 10) - 1;
-        var y = Math.floor(note / 10) - 1;
-        var prevVelocity = this.noteVelocities[note];
-        this.prevVelocities[note] = prevVelocity;
-        this.noteVelocities[note] = velocity;
-        var toggledOn = prevVelocity === 0 && velocity !== 0;
-        var toggledOff = prevVelocity > 0 && velocity === 0;
-        var isOn = velocity > 0;
-        var isOff = velocity === 0;
-        var isGridButton = x < 8 && y < 8;
-        if (isGridButton) {
-            this.maybeSetGridButtons(x, y, isOn);
+    // Navigation
+    {
+        if (controlButtons.up) {
+            trackBankHandler.bank.scrollBackwards();
         }
-        else {
-            this.maybeSetTopControlButtons(x, y, isOn, toggledOn);
-            this.maybeSetSideControlButtons(x, y, isOn, toggledOn);
+        else if (controlButtons.down) {
+            trackBankHandler.bank.scrollForwards();
         }
-        //
-        // This should be moved to transition state
-        //
-        {
-            if (toggledOn) {
-                if (isGridButton) {
-                    var track = trackBankHandler.bank.getItemAt(7 - y);
-                    var clipLauncher = track.clipLauncherSlotBank();
-                    // Select things
-                    track.select();
-                    clipLauncher.select(x);
-                    if (this.controlButtons.record) {
-                        clipLauncher.record(x);
-                    }
-                    else if (this.controlButtons.stopClip) {
-                        clipLauncher.stop();
-                    }
-                    else if (this.controlButtons.custom) {
-                        // delete clip
-                        clipLauncher.getItemAt(x).deleteObject();
-                    }
-                    else {
-                        // TODO: need to differentiate between get item at and launch
-                        clipLauncher.launch(x);
-                        // clipLauncher.getItemAt(x);
-                    }
-                }
-                else {
-                    if (this.controlButtons.up) {
-                        trackBankHandler.bank.scrollBackwards();
-                    }
-                    else if (this.controlButtons.down) {
-                        trackBankHandler.bank.scrollForwards();
-                    }
-                    if (this.controlButtons.left) {
-                        trackBankHandler.bank.sceneBank().scrollBackwards();
-                    }
-                    else if (this.controlButtons.right) {
-                        trackBankHandler.bank.sceneBank().scrollForwards();
-                    }
-                }
-            }
+        if (controlButtons.left) {
+            trackBankHandler.bank.sceneBank().scrollBackwards();
         }
-        //
-        //
-        //
-        this.state = this.state.transition(this);
-    };
-    LaunchpadObject.prototype.flush = function () {
-        this.state.render(this, this.renderer);
-        this.renderer.present();
-    };
-    return LaunchpadObject;
-}());
-var Buttons = {
-    isUp: function (x, y) {
-        return x == 0 && y == GRID_HEIGHT;
-    },
-    isDown: function (x, y) {
-        return x == 1 && y == GRID_HEIGHT;
-    },
-    isLeft: function (x, y) {
-        return x == 2 && y == GRID_HEIGHT;
-    },
-    isRight: function (x, y) {
-        return x == 3 && y == GRID_HEIGHT;
-    },
-    isSession: function (x, y) {
-        return x == 4 && y == GRID_HEIGHT;
-    },
-    isNote: function (x, y) {
-        return x == 5 && y == GRID_HEIGHT;
-    },
-    isCustom: function (x, y) {
-        return x == 6 && y == GRID_HEIGHT;
-    },
-    isCaptureMidi: function (x, y) {
-        return x == 7 && y == GRID_HEIGHT;
-    },
-    isVolume: function (x, y) {
-        return x == GRID_WIDTH && y == 7;
-    },
-    isPan: function (x, y) {
-        return x == GRID_WIDTH && y == 6;
-    },
-    isSendA: function (x, y) {
-        return x == GRID_WIDTH && y == 5;
-    },
-    isSendB: function (x, y) {
-        return x == GRID_WIDTH && y == 4;
-    },
-    isStopClip: function (x, y) {
-        return x == GRID_WIDTH && y == 3;
-    },
-    isMute: function (x, y) {
-        return x == GRID_WIDTH && y == 2;
-    },
-    isSolo: function (x, y) {
-        return x == GRID_WIDTH && y == 1;
-    },
-    isRecordArm: function (x, y) {
-        return x == GRID_WIDTH && y == 0;
-    },
+        else if (controlButtons.right) {
+            trackBankHandler.bank.sceneBank().scrollForwards();
+        }
+    }
+    return context;
 };
 //
-// src/out/launchpad/states.js
+// src/out/launchpad/contextArrange.js
 //
-var StateType;
-(function (StateType) {
-    StateType[StateType["EmptyArrange"] = 0] = "EmptyArrange";
-})(StateType || (StateType = {}));
-var DefaultArrangeState = {
-    type: function () {
-        return StateType.EmptyArrange;
+var ContextArrange = {
+    title: function () {
+        return "ContextArrange";
     },
-    transition: function (lp) {
-        return this;
+    shouldReplaceHistory: function () {
+        return true;
+    },
+    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
+        var controlButtons = lp.controlButtons();
+        if (state == ButtonState.ToggledOn && isGridButton) {
+            var track = trackBankHandler.bank.getItemAt(7 - y);
+            var clipLauncher = track.clipLauncherSlotBank();
+            // Select things
+            // track.select();
+            // clipLauncher.select(x);
+            if (controlButtons.record) {
+                clipLauncher.record(x);
+            }
+            else if (controlButtons.stopClip) {
+                clipLauncher.stop();
+            }
+            else if (controlButtons.custom) {
+                // delete clip
+                clipLauncher.getItemAt(x).deleteObject();
+            }
+            else {
+                clipLauncher.launch(x);
+            }
+            return this;
+        }
+        return null;
     },
     render: function (lp, renderer) {
+        var controlButtons = lp.controlButtons();
         // Paint grid
         {
             for (var row = 0; row < NUM_SCENES; row++) {
@@ -769,10 +679,10 @@ var DefaultArrangeState = {
         {
             var y = GRID_HEIGHT;
             for (var x = 0; x < NUM_SCENES; x++) {
-                if (Buttons.isUp(x, y)) {
+                if (controlButtons.isUp(x, y)) {
                     renderer.staticLight(x, y, "50" /* ColorPalette.Purple */);
                 }
-                else if (Buttons.isCaptureMidi(x, y)) {
+                else if (controlButtons.isCaptureMidi(x, y)) {
                     renderer.staticLight(x, y, "07" /* ColorPalette.RedDarker */);
                 }
                 else {
@@ -786,6 +696,274 @@ var DefaultArrangeState = {
         }
     },
 };
+//
+// src/out/launchpad/contextPanControl.js
+//
+var ContextPanControl = {
+    title: function () {
+        return "ContextPanControl";
+    },
+    shouldReplaceHistory: function () {
+        return false;
+    },
+    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
+        var controlButtons = lp.controlButtons();
+        var shouldReturnToPrevious = controlButtons.pan && !isGridButton && state == ButtonState.ToggledOn;
+        if (shouldReturnToPrevious) {
+            return lp.lastContext();
+        }
+        return contextDefaultTransition(lp, this);
+    },
+    render: function (lp, renderer) {
+        // Paint grid
+        {
+            for (var row = 0; row < NUM_SCENES + 1; row++) {
+                for (var col = 0; col < NUM_SCENES + 1; col++) {
+                    renderer.staticLight(row, col, "25" /* ColorPalette.BlueLighter */);
+                }
+            }
+        }
+        // Paint logo
+        {
+            renderer.pulsingLight(8, 8, "27" /* ColorPalette.BlueDarker */);
+        }
+    },
+};
+//
+// src/out/launchpad/contextRecordArm.js
+//
+var ContextRecordArm = {
+    title: function () {
+        return "ContextRecordArm";
+    },
+    shouldReplaceHistory: function () {
+        return false;
+    },
+    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
+        var controlButtons = lp.controlButtons();
+        var shouldReturnToPrevious = controlButtons.recordArm &&
+            !isGridButton &&
+            state == ButtonState.ToggledOn;
+        if (shouldReturnToPrevious) {
+            return lp.lastContext();
+        }
+        return contextDefaultTransition(lp, this);
+    },
+    render: function (lp, renderer) {
+        // Paint grid
+        {
+            for (var row = 0; row < NUM_SCENES + 1; row++) {
+                for (var col = 0; col < NUM_SCENES + 1; col++) {
+                    renderer.staticLight(row, col, "07" /* ColorPalette.RedDarker */);
+                }
+            }
+        }
+        // Paint logo
+        {
+            renderer.pulsingLight(8, 8, "27" /* ColorPalette.BlueDarker */);
+        }
+    },
+};
+//
+// src/out/launchpad/contextVolume.js
+//
+var ContextVolume = {
+    title: function () {
+        return "ContextVolume";
+    },
+    shouldReplaceHistory: function () {
+        return false;
+    },
+    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
+        var controlButtons = lp.controlButtons();
+        var shouldReturnToPrevious = controlButtons.volume && !isGridButton && state == ButtonState.ToggledOn;
+        if (shouldReturnToPrevious) {
+            return lp.lastContext();
+        }
+        return contextDefaultTransition(lp, this);
+    },
+    render: function (lp, renderer) {
+        // Paint grid
+        {
+            for (var row = 0; row < NUM_SCENES + 1; row++) {
+                for (var col = 0; col < NUM_SCENES + 1; col++) {
+                    renderer.staticLight(row, col, "5F" /* ColorPalette.HotPink */);
+                }
+            }
+        }
+        // Paint logo
+        {
+            renderer.pulsingLight(8, 8, "27" /* ColorPalette.BlueDarker */);
+        }
+    },
+};
+//
+// src/out/launchpad/launchpadx.js
+//
+/**
+ * A class representing a Launchpad object.
+ */
+var LaunchpadObject = /** @class */ (function () {
+    function LaunchpadObject() {
+        var _this = this;
+        /**
+         * Attempts to set a control button's state.
+         * @param x
+         * @param y
+         * @param isOn
+         */
+        this.maybeSetControlButtons = function (x, y, isOn) {
+            // Set top row
+            if (y == GRID_WIDTH && x >= 0 && x < GRID_WIDTH) {
+                switch (x) {
+                    case 0:
+                        _this.controlButtonState.up = isOn;
+                        break;
+                    case 1:
+                        _this.controlButtonState.down = isOn;
+                        break;
+                    case 2:
+                        _this.controlButtonState.left = isOn;
+                        break;
+                    case 3:
+                        _this.controlButtonState.right = isOn;
+                        break;
+                    case 4:
+                        _this.controlButtonState.session = isOn;
+                        break;
+                    case 5:
+                        _this.controlButtonState.note = isOn;
+                        break;
+                    case 6:
+                        _this.controlButtonState.custom = isOn;
+                        break;
+                    case 7:
+                        _this.controlButtonState.record = isOn;
+                        break;
+                }
+            }
+            // Set side buttons
+            else if (x == GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+                switch (y) {
+                    case 0:
+                        _this.controlButtonState.recordArm = isOn;
+                        break;
+                    case 1:
+                        _this.controlButtonState.solo = isOn;
+                        break;
+                    case 2:
+                        _this.controlButtonState.mute = isOn;
+                        break;
+                    case 3:
+                        _this.controlButtonState.stopClip = isOn;
+                        break;
+                    case 4:
+                        _this.controlButtonState.sendB = isOn;
+                        break;
+                    case 5:
+                        _this.controlButtonState.sendA = isOn;
+                        break;
+                    case 6:
+                        _this.controlButtonState.pan = isOn;
+                        break;
+                    case 7:
+                        _this.controlButtonState.volume = isOn;
+                        break;
+                }
+            }
+        };
+        this.contextPrevious = null;
+        this.context = ContextArrange;
+        this.renderer = new LaunchpadRenderer(GRID_WIDTH, GRID_HEIGHT);
+        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+        this.prevVelocities = new Array(NUM_NOTES);
+        this.noteVelocities = new Array(NUM_NOTES);
+        for (var i = 0; i < NUM_NOTES; i++) {
+            this.prevVelocities[i] = 0;
+            this.noteVelocities[i] = 0;
+        }
+        var previousLightsSize = GRID_WIDTH * GRID_HEIGHT;
+        this.previousLights = new Array(previousLightsSize);
+        for (var i = 0; i < previousLightsSize; i++) {
+            this.previousLights[i] = "";
+        }
+        this.controlButtonState = new ControlButtons();
+        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+    }
+    /**
+     * Returns the panel layout for the DAW.
+     */
+    LaunchpadObject.prototype.layout = function () {
+        return applicationHandler.layout();
+    };
+    /**
+     * Returns the control button state.
+     * @returns the control button state.
+     */
+    LaunchpadObject.prototype.controlButtons = function () {
+        return this.controlButtonState;
+    };
+    /**
+     * Returns the last context page.
+     * @returns
+     */
+    LaunchpadObject.prototype.lastContext = function () {
+        return this.contextPrevious ? this.contextPrevious : ContextArrange;
+    };
+    /**
+     * Callback for handling midi notes.
+     * @param _status
+     * @param note
+     * @param velocity
+     */
+    LaunchpadObject.prototype.handleMidi = function (_status, note, velocity) {
+        var x = (note % 10) - 1;
+        var y = Math.floor(note / 10) - 1;
+        var prevVelocity = this.noteVelocities[note];
+        this.prevVelocities[note] = prevVelocity;
+        this.noteVelocities[note] = velocity;
+        var toggledOn = prevVelocity === 0 && velocity !== 0;
+        var toggledOff = prevVelocity > 0 && velocity === 0;
+        var isOn = velocity > 0;
+        var isGridButton = x < GRID_WIDTH && y < GRID_HEIGHT;
+        if (isGridButton) {
+            this.gridButtons.set(x, y, isOn);
+        }
+        else {
+            this.maybeSetControlButtons(x, y, isOn);
+        }
+        var buttonState = ButtonState.Off;
+        if (toggledOn) {
+            buttonState = ButtonState.ToggledOn;
+        }
+        else if (toggledOff) {
+            buttonState = ButtonState.ToggledOff;
+        }
+        else if (isOn) {
+            buttonState = ButtonState.On;
+        }
+        var newContext = this.context.transition(this, note, velocity, prevVelocity, buttonState, x, y, isGridButton);
+        if (newContext === null) {
+            newContext = contextDefaultTransition(this, this.context);
+        }
+        if (this.context.shouldReplaceHistory()) {
+            this.contextPrevious = this.context;
+        }
+        this.context = newContext;
+    };
+    /**
+     * Flushes the Launchpad, performing any rendering updates.
+     */
+    LaunchpadObject.prototype.flush = function () {
+        this.context.render(this, this.renderer);
+        this.renderer.present();
+    };
+    return LaunchpadObject;
+}());
+//
+// src/out/**/**/*.js
+//
+
 //
 // src/out/launchpadX.control.js
 //
