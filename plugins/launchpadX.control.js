@@ -234,16 +234,278 @@ var GridButtons = /** @class */ (function () {
     return GridButtons;
 }());
 //
-// src/out/launchpadx.js
+// src/out/light.js
 //
-var StateType;
-(function (StateType) {
-    StateType[StateType["EmptyArrange"] = 0] = "EmptyArrange";
-})(StateType || (StateType = {}));
+var setClipLight = function (x, y, clip, renderer) {
+    if (clip.isRecordingQueued) {
+        renderer.pulsingLight(x, y, "04" /* ColorPalette.RedLighter */);
+    }
+    else if (clip.isPlaybackQueued) {
+        renderer.pulsingLight(x, y, "14" /* ColorPalette.GreenLighter */);
+    }
+    else if (clip.isStopQueued) {
+        renderer.pulsingLight(x, y, "47" /* ColorPalette.Dirt */);
+    }
+    else if (clip.isRecording) {
+        renderer.flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
+    }
+    else if (clip.isPlaying) {
+        renderer.flashingLight(x, y, "7B" /* ColorPalette.GreenDarker */, "57" /* ColorPalette.Green */);
+    }
+    else {
+        var _a = clip.color, clipR = _a[0], clipG = _a[1], clipB = _a[2];
+        renderer.rgbLight(x, y, clipR, clipG, clipB);
+    }
+};
+var light = function (x, y, type, color) {
+    var index = x + 1 + (y + 1) * 10;
+    return "".concat(type, " ").concat(uint8ToHex(index), " ").concat(color);
+};
+var rgbLight = function (x, y, r, g, b) {
+    var color = "".concat(uint8ToHex(r), " ").concat(uint8ToHex(g), " ").concat(uint8ToHex(b));
+    return light(x, y, "03" /* LightType.RGB */, color);
+};
+var flashingLight = function (x, y, colorA, colorB) {
+    return light(x, y, "01" /* LightType.Flashing */, "".concat(colorA, " ").concat(colorB));
+};
+var staticLight = function (x, y, color) {
+    return light(x, y, "00" /* LightType.Static */, color);
+};
+var pulsingLight = function (x, y, color) {
+    return light(x, y, "02" /* LightType.Pulsing */, color);
+};
+//
+// src/out/renderer.js
+//
+var LaunchpadRenderer = /** @class */ (function () {
+    function LaunchpadRenderer(width, height) {
+        this.queuedLights = "";
+        this.isDirty = false;
+        var capacity = width * height;
+        this.width = width;
+        this.height = height;
+        this.previousLights = new Array(capacity);
+    }
+    LaunchpadRenderer.prototype.pulsingLight = function (x, y, color) {
+        this.setLight(x, y, pulsingLight(x, y, color));
+    };
+    LaunchpadRenderer.prototype.staticLight = function (x, y, color) {
+        this.setLight(x, y, staticLight(x, y, color));
+    };
+    LaunchpadRenderer.prototype.flashingLight = function (x, y, a, b) {
+        this.setLight(x, y, flashingLight(x, y, a, b));
+    };
+    LaunchpadRenderer.prototype.rgbLight = function (x, y, rUint8, gUint8, bUint8) {
+        this.setLight(x, y, rgbLight(x, y, rUint8, gUint8, bUint8));
+    };
+    /**
+     * Attempts to set the given light. If a given light already has that value, will skip sending that message.
+     * @param x
+     * @param y
+     * @param sysexMsg
+     */
+    LaunchpadRenderer.prototype.setLight = function (x, y, sysexMsg) {
+        var index = index2dTo1d(x, y, this.width, this.height);
+        if (this.previousLights[index] !== sysexMsg) {
+            this.previousLights[index] = sysexMsg;
+            this.queuedLights += sysexMsg;
+            this.isDirty = true;
+        }
+    };
+    /**
+     * Renders the given lights.
+     */
+    LaunchpadRenderer.prototype.present = function () {
+        if (this.isDirty) {
+            var sysex = "F0 00 20 29 02 0C 03 ".concat(this.queuedLights, " f7");
+            sendSysex(sysex);
+            this.clearQueue();
+        }
+    };
+    /**
+     * Resets the light queue.
+     */
+    LaunchpadRenderer.prototype.clearQueue = function () {
+        this.isDirty = false;
+        this.queuedLights = "";
+    };
+    return LaunchpadRenderer;
+}());
+//
+// src/out/core/core_bitwig.js
+//
+var isMaxVelocity = function (velocity) {
+    return velocity === 127;
+};
+var isMinVelocity = function (velocity) {
+    return velocity === 0;
+};
+var createNoteIn = function (name, input) {
+    return input.createNoteInput(name, 
+    // midi messages
+    "80????", // note off
+    "90????", // note on
+    "B0????", // cc commands
+    "D0????", // aftertouch
+    "E0????" // pitchbend
+    );
+};
+//
+// src/out/core/core_color.js
+//
+/**
+ * Normalizes a color in a 0..1 range to a 0..127 range
+ * @param c
+ * @returns
+ */
+var normalizeColor = function (c) {
+    return Math.round(c * 127);
+};
+//
+// src/out/core/core_handlerApplication.js
+//
+var ApplicationHandler = /** @class */ (function () {
+    function ApplicationHandler(host) {
+        var _this = this;
+        this.panelLayout = "ARRANGE" /* PanelLayout.arrange */;
+        this.application = host.createApplication();
+        var observer = this.application.panelLayout();
+        observer.markInterested();
+        observer.addValueObserver(function (layout) {
+            _this.panelLayout = layout;
+        });
+    }
+    ApplicationHandler.prototype.layout = function () {
+        return this.panelLayout;
+    };
+    return ApplicationHandler;
+}());
+//
+// src/out/core/core_handlerTrack.js
+//
+var Clip = /** @class */ (function () {
+    function Clip() {
+        this.hasContent = false;
+        this.color = [0, 0, 0];
+        this.index = -1;
+        this.isStopQueued = false;
+        this.isPlaying = false;
+        this.isPlaybackQueued = false;
+        this.isRecording = false;
+        this.isRecordingQueued = false;
+    }
+    return Clip;
+}());
+var TrackHandler = /** @class */ (function () {
+    function TrackHandler(host, id, name, numTracks, numSends, numScenes, showIndications) {
+        var _this = this;
+        this.colors = new Array(numTracks);
+        this.clips = new Array(numTracks);
+        this.trackQueuedForStop = new Array(numTracks);
+        this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
+        this.cursor = host.createCursorTrack(id, name, 0, 0, true);
+        var bankSize = this.bank.getSizeOfBank();
+        var track, element;
+        var _loop_1 = function () {
+            var idx = bankIndex;
+            track = this_1.bank.getItemAt(idx);
+            this_1.trackQueuedForStop[idx] = false;
+            track.isQueuedForStop().markInterested();
+            track.isQueuedForStop().addValueObserver(function (isQueuedForStop) {
+                _this.trackQueuedForStop[idx] = isQueuedForStop;
+            });
+            // Track elements
+            {
+                element = track.pan();
+                element.markInterested();
+                element.setIndication(true);
+                element = track.volume();
+                element.markInterested();
+                element.setIndication(true);
+            }
+            // Clip data
+            {
+                var clipLauncher = track.clipLauncherSlotBank();
+                clips = new Array(numScenes);
+                for (var j = 0; j < numScenes; j++) {
+                    clips[j] = new Clip();
+                }
+                this_1.clips[idx] = clips;
+                clipLauncher.addHasContentObserver(function (slotIndex, hasContent) {
+                    _this.clips[idx][slotIndex].index = slotIndex;
+                    _this.clips[idx][slotIndex].hasContent = hasContent;
+                });
+                clipLauncher.addIsStopQueuedObserver(function (slotIndex, isStopQueued) {
+                    _this.clips[idx][slotIndex].isStopQueued = isStopQueued;
+                });
+                clipLauncher.addIsPlayingObserver(function (slotIndex, isPlaying) {
+                    _this.clips[idx][slotIndex].isPlaying = isPlaying;
+                });
+                clipLauncher.addIsPlaybackQueuedObserver(function (slotIndex, isQueued) {
+                    _this.clips[idx][slotIndex].isPlaybackQueued = isQueued;
+                });
+                clipLauncher.addIsRecordingObserver(function (slotIndex, isRecording) {
+                    _this.clips[idx][slotIndex].isRecording = isRecording;
+                });
+                clipLauncher.addIsRecordingQueuedObserver(function (slotIndex, isQueued) {
+                    _this.clips[idx][slotIndex].isRecordingQueued = isQueued;
+                });
+                clipLauncher.addColorObserver(function (slotIndex, r, g, b) {
+                    _this.clips[idx][slotIndex].index = slotIndex;
+                    _this.clips[idx][slotIndex].color = [
+                        normalizeColor(r),
+                        normalizeColor(g),
+                        normalizeColor(b),
+                    ];
+                });
+            }
+            // Set colors for track
+            {
+                this_1.colors[idx] = [0, 0, 0];
+                track.color().addValueObserver(function (r, g, b) {
+                    _this.colors[idx] = [
+                        normalizeColor(r),
+                        normalizeColor(g),
+                        normalizeColor(b),
+                    ];
+                });
+            }
+        };
+        var this_1 = this, clips;
+        for (var bankIndex = 0; bankIndex < bankSize; bankIndex++) {
+            _loop_1();
+        }
+        this.bank.followCursorTrack(this.cursor);
+        this.cursor.solo().markInterested();
+        this.cursor.mute().markInterested();
+        this.bank.sceneBank().setIndication(showIndications);
+    }
+    return TrackHandler;
+}());
+//
+// src/out/core/core_handlerTransport.js
+//
+var TransportHandler = /** @class */ (function () {
+    function TransportHandler(host) {
+        this.transport = host.createTransport();
+    }
+    return TransportHandler;
+}());
+//
+// src/out/core/core_math.js
+//
+var index1dTo2d = function (index, width) {
+    return [index % width, index / width];
+};
+var index2dTo1d = function (x, y, width, height) {
+    return (y % height) * width + (x % width);
+};
+//
+// src/out/launchpad/launchpadx.js
+//
 var LaunchpadObject = /** @class */ (function () {
     function LaunchpadObject() {
         var _this = this;
-        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
         this.maybeSetGridButtons = function (x, y, isOn) {
             if (x < GRID_WIDTH && y < GRID_HEIGHT) {
                 _this.gridButtons.set(x, y, isOn);
@@ -309,6 +571,9 @@ var LaunchpadObject = /** @class */ (function () {
                 }
             }
         };
+        this.state = DefaultArrangeState;
+        this.renderer = new LaunchpadRenderer(GRID_WIDTH, GRID_HEIGHT);
+        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
         this.prevVelocities = new Array(NUM_NOTES);
         this.noteVelocities = new Array(NUM_NOTES);
         for (var i = 0; i < NUM_NOTES; i++) {
@@ -341,140 +606,57 @@ var LaunchpadObject = /** @class */ (function () {
             this.maybeSetTopControlButtons(x, y, isOn, toggledOn);
             this.maybeSetSideControlButtons(x, y, isOn, toggledOn);
         }
-        if (toggledOn) {
-            if (isGridButton) {
-                var track = trackBankHandler.bank.getItemAt(7 - y);
-                var clipLauncher = track.clipLauncherSlotBank();
-                // Select things
-                track.select();
-                clipLauncher.select(x);
-                if (this.controlButtons.record) {
-                    clipLauncher.record(x);
-                }
-                else if (this.controlButtons.stopClip) {
-                    clipLauncher.stop();
-                }
-                else if (this.controlButtons.custom) {
-                    // delete clip
-                    clipLauncher.getItemAt(x).deleteObject();
-                }
-                else {
-                    // TODO: need to differentiate between get item at and launch
-                    clipLauncher.launch(x);
-                    // clipLauncher.getItemAt(x);
-                }
-            }
-            else {
-                if (this.controlButtons.up) {
-                    trackBankHandler.bank.scrollBackwards();
-                }
-                else if (this.controlButtons.down) {
-                    trackBankHandler.bank.scrollForwards();
-                }
-                if (this.controlButtons.left) {
-                    trackBankHandler.bank.sceneBank().scrollBackwards();
-                }
-                else if (this.controlButtons.right) {
-                    trackBankHandler.bank.sceneBank().scrollForwards();
-                }
-            }
-        }
-    };
-    LaunchpadObject.prototype.flush = function () {
-        var lights = "";
-        var lightIndex = 0;
-        var changedLights = 0;
-        // Paint grid
+        //
+        // This should be moved to transition state
+        //
         {
-            for (var row = 0; row < NUM_SCENES; row++) {
-                for (var col = 0; col < NUM_SCENES; col++) {
-                    // Y needs to be inverted.
-                    var y = 7 - col;
-                    var x_1 = row;
-                    var clip = trackBankHandler.clips[col][row];
-                    var _a = trackBankHandler.colors[col], trackR = _a[0], trackG = _a[1], trackB = _a[2];
-                    var queuedForStop = trackBankHandler.trackQueuedForStop[col];
-                    println("Queued for stop - ".concat(x_1, ",").concat(y, ": ").concat(queuedForStop));
-                    var light;
-                    if (queuedForStop) {
-                        light = pulsingLight(x_1, y, "04" /* ColorPalette.RedLighter */);
+            if (toggledOn) {
+                if (isGridButton) {
+                    var track = trackBankHandler.bank.getItemAt(7 - y);
+                    var clipLauncher = track.clipLauncherSlotBank();
+                    // Select things
+                    track.select();
+                    clipLauncher.select(x);
+                    if (this.controlButtons.record) {
+                        clipLauncher.record(x);
                     }
-                    else if (clip.hasContent) {
-                        light = clipLight(x_1, y, clip);
+                    else if (this.controlButtons.stopClip) {
+                        clipLauncher.stop();
+                    }
+                    else if (this.controlButtons.custom) {
+                        // delete clip
+                        clipLauncher.getItemAt(x).deleteObject();
                     }
                     else {
-                        light = rgbLight(x_1, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
+                        // TODO: need to differentiate between get item at and launch
+                        clipLauncher.launch(x);
+                        // clipLauncher.getItemAt(x);
                     }
-                    if (this.previousLights[lightIndex] !== light) {
-                        lights += light;
-                        this.previousLights[lightIndex] = light;
-                        changedLights += 1;
-                    }
-                    lightIndex += 1;
-                }
-            }
-        }
-        // Paint side bar
-        {
-            var x_2 = GRID_WIDTH;
-            for (var col = 0; col < NUM_SCENES; col++) {
-                var y = col;
-                var _b = trackBankHandler.colors[7 - y], r = _b[0], g = _b[1], b = _b[2];
-                var light_1 = void 0;
-                var isHeld = false;
-                if (isHeld) {
-                    light_1 = staticLight(x_2, y, "50" /* ColorPalette.Purple */);
-                }
-                else if (r === 0 && g === 0 && b === 0) {
-                    light_1 = staticLight(x_2, y, "77" /* ColorPalette.White */);
                 }
                 else {
-                    light_1 = rgbLight(x_2, y, r, g, b);
+                    if (this.controlButtons.up) {
+                        trackBankHandler.bank.scrollBackwards();
+                    }
+                    else if (this.controlButtons.down) {
+                        trackBankHandler.bank.scrollForwards();
+                    }
+                    if (this.controlButtons.left) {
+                        trackBankHandler.bank.sceneBank().scrollBackwards();
+                    }
+                    else if (this.controlButtons.right) {
+                        trackBankHandler.bank.sceneBank().scrollForwards();
+                    }
                 }
-                if (this.previousLights[lightIndex] !== light_1) {
-                    lights += light_1;
-                    this.previousLights[lightIndex] = light_1;
-                    changedLights += 1;
-                }
-                lightIndex += 1;
             }
         }
-        // Paint top
-        {
-            var y = GRID_HEIGHT;
-            for (var x = 0; x < NUM_SCENES; x++) {
-                var light_2 = void 0;
-                if (Buttons.isUp(x, y)) {
-                    light_2 = staticLight(x, y, "50" /* ColorPalette.Purple */);
-                }
-                else if (Buttons.isCaptureMidi(x, y)) {
-                    light_2 = staticLight(x, y, "07" /* ColorPalette.RedDarker */);
-                }
-                else {
-                    light_2 = staticLight(x, y, "4F" /* ColorPalette.Blue */);
-                }
-                if (this.previousLights[lightIndex] !== light_2) {
-                    lights += light_2;
-                    this.previousLights[lightIndex] = light_2;
-                    changedLights += 1;
-                }
-                lightIndex += 1;
-            }
-        }
-        // Paint logo
-        {
-            var light_3 = pulsingLight(8, 8, "5F" /* ColorPalette.HotPink */);
-            if (this.previousLights[lightIndex] !== light_3) {
-                lights += light_3;
-                this.previousLights[lightIndex] = light_3;
-                changedLights += 1;
-            }
-            lightIndex += 1;
-        }
-        if (changedLights > 0) {
-            var sysex = "F0 00 20 29 02 0C 03 ".concat(lights, " f7");
-            sendSysex(sysex);
-        }
+        //
+        //
+        //
+        this.state = this.state.transition(this);
+    };
+    LaunchpadObject.prototype.flush = function () {
+        this.state.render(this, this.renderer);
+        this.renderer.present();
     };
     return LaunchpadObject;
 }());
@@ -529,43 +711,80 @@ var Buttons = {
     },
 };
 //
-// src/out/light.js
+// src/out/launchpad/states.js
 //
-var clipLight = function (x, y, clip) {
-    if (clip.isRecordingQueued) {
-        return pulsingLight(x, y, "04" /* ColorPalette.RedLighter */);
-    }
-    else if (clip.isPlaybackQueued) {
-        return pulsingLight(x, y, "14" /* ColorPalette.GreenLighter */);
-    }
-    else if (clip.isStopQueued) {
-        return pulsingLight(x, y, "47" /* ColorPalette.Dirt */);
-    }
-    else if (clip.isRecording) {
-        return flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
-    }
-    else if (clip.isPlaying) {
-        return flashingLight(x, y, "7B" /* ColorPalette.GreenDarker */, "57" /* ColorPalette.Green */);
-    }
-    var _a = clip.color, clipR = _a[0], clipG = _a[1], clipB = _a[2];
-    return rgbLight(x, y, clipR, clipG, clipB);
-};
-var light = function (x, y, type, color) {
-    var index = x + 1 + (y + 1) * 10;
-    return "".concat(type, " ").concat(uint8ToHex(index), " ").concat(color);
-};
-var rgbLight = function (x, y, r, g, b) {
-    var color = "".concat(uint8ToHex(r), " ").concat(uint8ToHex(g), " ").concat(uint8ToHex(b));
-    return light(x, y, "03" /* LightType.RGB */, color);
-};
-var flashingLight = function (x, y, colorA, colorB) {
-    return light(x, y, "01" /* LightType.Flashing */, "".concat(colorA, " ").concat(colorB));
-};
-var staticLight = function (x, y, color) {
-    return light(x, y, "00" /* LightType.Static */, color);
-};
-var pulsingLight = function (x, y, color) {
-    return light(x, y, "02" /* LightType.Pulsing */, color);
+var StateType;
+(function (StateType) {
+    StateType[StateType["EmptyArrange"] = 0] = "EmptyArrange";
+})(StateType || (StateType = {}));
+var DefaultArrangeState = {
+    type: function () {
+        return StateType.EmptyArrange;
+    },
+    transition: function (lp) {
+        return this;
+    },
+    render: function (lp, renderer) {
+        // Paint grid
+        {
+            for (var row = 0; row < NUM_SCENES; row++) {
+                for (var col = 0; col < NUM_SCENES; col++) {
+                    // Y needs to be inverted.
+                    var y = 7 - col;
+                    var x_1 = row;
+                    var queuedForStop = trackBankHandler.trackQueuedForStop[col];
+                    var clip = trackBankHandler.clips[col][row];
+                    var _a = trackBankHandler.colors[col], trackR = _a[0], trackG = _a[1], trackB = _a[2];
+                    if (queuedForStop) {
+                        renderer.pulsingLight(x_1, y, "04" /* ColorPalette.RedLighter */);
+                    }
+                    else if (clip.hasContent) {
+                        setClipLight(x_1, y, clip, renderer);
+                    }
+                    else {
+                        renderer.rgbLight(x_1, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
+                    }
+                }
+            }
+        }
+        // Paint side bar
+        {
+            var x_2 = GRID_WIDTH;
+            for (var col = 0; col < NUM_SCENES; col++) {
+                var y = col;
+                var _b = trackBankHandler.colors[7 - y], r = _b[0], g = _b[1], b = _b[2];
+                var isHeld = false;
+                if (isHeld) {
+                    renderer.staticLight(x_2, y, "50" /* ColorPalette.Purple */);
+                }
+                else if (r === 0 && g === 0 && b === 0) {
+                    renderer.staticLight(x_2, y, "77" /* ColorPalette.White */);
+                }
+                else {
+                    renderer.rgbLight(x_2, y, r, g, b);
+                }
+            }
+        }
+        // Paint top
+        {
+            var y = GRID_HEIGHT;
+            for (var x = 0; x < NUM_SCENES; x++) {
+                if (Buttons.isUp(x, y)) {
+                    renderer.staticLight(x, y, "50" /* ColorPalette.Purple */);
+                }
+                else if (Buttons.isCaptureMidi(x, y)) {
+                    renderer.staticLight(x, y, "07" /* ColorPalette.RedDarker */);
+                }
+                else {
+                    renderer.staticLight(x, y, "4F" /* ColorPalette.Blue */);
+                }
+            }
+        }
+        // Paint logo
+        {
+            renderer.pulsingLight(8, 8, "5F" /* ColorPalette.HotPink */);
+        }
+    },
 };
 //
 // src/out/launchpadX.control.js

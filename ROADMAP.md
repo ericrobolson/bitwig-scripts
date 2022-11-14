@@ -5,6 +5,7 @@
 
 # Current Roadmap
 
+- [ ] Break out state transitions from handle midi
 - [ ] Add in variations so if a grid column is say even or odd with respect to bitwig, it's lighter or darker on the launchpad.
 - [ ] Make buttons glow a color if pressed.
 - [ ] Add triggering of metronome
@@ -49,3 +50,4 @@ Maybe features:
 - [x] Arrange mode navigation: up/down on window + lpad
 - [x] Arrange mode navigation: left/right
 - [x] If a track is queued to stop, make the entire track pulse red.
+- [x] Break out light renderer

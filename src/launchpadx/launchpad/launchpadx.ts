@@ -1,20 +1,17 @@
-enum StateType {
-  EmptyArrange,
-}
-
-interface State {
-  type(): StateType;
-  shouldTransition(lp: LaunchpadObject): boolean;
-}
-
 class LaunchpadObject {
   private noteVelocities: Array<number>;
   private prevVelocities: Array<number>;
   private previousLights: Array<string>;
   private controlButtons: ControlButtons;
-  private gridButtons: GridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+  private gridButtons: GridButtons;
+  private state: State;
+  private renderer: Renderer & RenderQueue;
 
   constructor() {
+    this.state = DefaultArrangeState;
+    this.renderer = new LaunchpadRenderer(GRID_WIDTH, GRID_HEIGHT);
+    this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+
     this.prevVelocities = new Array(NUM_NOTES);
     this.noteVelocities = new Array(NUM_NOTES);
     for (var i = 0; i < NUM_NOTES; i++) {
@@ -54,150 +51,55 @@ class LaunchpadObject {
       this.maybeSetSideControlButtons(x, y, isOn, toggledOn);
     }
 
-    if (toggledOn) {
-      if (isGridButton) {
-        const track = trackBankHandler.bank.getItemAt(7 - y);
-        const clipLauncher = track.clipLauncherSlotBank();
+    //
+    // This should be moved to transition state
+    //
+    {
+      if (toggledOn) {
+        if (isGridButton) {
+          const track = trackBankHandler.bank.getItemAt(7 - y);
+          const clipLauncher = track.clipLauncherSlotBank();
 
-        // Select things
-        track.select();
-        clipLauncher.select(x);
-        if (this.controlButtons.record) {
-          clipLauncher.record(x);
-        } else if (this.controlButtons.stopClip) {
-          clipLauncher.stop();
-        } else if (this.controlButtons.custom) {
-          // delete clip
-          clipLauncher.getItemAt(x).deleteObject();
+          // Select things
+          track.select();
+          clipLauncher.select(x);
+          if (this.controlButtons.record) {
+            clipLauncher.record(x);
+          } else if (this.controlButtons.stopClip) {
+            clipLauncher.stop();
+          } else if (this.controlButtons.custom) {
+            // delete clip
+            clipLauncher.getItemAt(x).deleteObject();
+          } else {
+            // TODO: need to differentiate between get item at and launch
+            clipLauncher.launch(x);
+            // clipLauncher.getItemAt(x);
+          }
         } else {
-          // TODO: need to differentiate between get item at and launch
-          clipLauncher.launch(x);
-          // clipLauncher.getItemAt(x);
-        }
-      } else {
-        if (this.controlButtons.up) {
-          trackBankHandler.bank.scrollBackwards();
-        } else if (this.controlButtons.down) {
-          trackBankHandler.bank.scrollForwards();
-        }
+          if (this.controlButtons.up) {
+            trackBankHandler.bank.scrollBackwards();
+          } else if (this.controlButtons.down) {
+            trackBankHandler.bank.scrollForwards();
+          }
 
-        if (this.controlButtons.left) {
-          trackBankHandler.bank.sceneBank().scrollBackwards();
-        } else if (this.controlButtons.right) {
-          trackBankHandler.bank.sceneBank().scrollForwards();
+          if (this.controlButtons.left) {
+            trackBankHandler.bank.sceneBank().scrollBackwards();
+          } else if (this.controlButtons.right) {
+            trackBankHandler.bank.sceneBank().scrollForwards();
+          }
         }
       }
     }
+    //
+    //
+    //
+
+    this.state = this.state.transition(this);
   }
 
   flush() {
-    var lights = "";
-    var lightIndex = 0;
-    var changedLights = 0;
-
-    // Paint grid
-    {
-      for (var row = 0; row < NUM_SCENES; row++) {
-        for (var col = 0; col < NUM_SCENES; col++) {
-          // Y needs to be inverted.
-          const y = 7 - col;
-          const x = row;
-
-          const queuedForStop = trackBankHandler.trackQueuedForStop[col];
-
-          const clip = trackBankHandler.clips[col][row];
-          const [trackR, trackG, trackB] = trackBankHandler.colors[col];
-
-          var light;
-          if (queuedForStop) {
-            light = pulsingLight(x, y, ColorPalette.RedLighter);
-          } else if (clip.hasContent) {
-            light = clipLight(x, y, clip);
-          } else {
-            light = rgbLight(
-              x,
-              y,
-              trackR * BACKGROUND_LIGHT_STRENGTH,
-              trackG * BACKGROUND_LIGHT_STRENGTH,
-              trackB * BACKGROUND_LIGHT_STRENGTH
-            );
-          }
-
-          if (this.previousLights[lightIndex] !== light) {
-            lights += light;
-            this.previousLights[lightIndex] = light;
-            changedLights += 1;
-          }
-
-          lightIndex += 1;
-        }
-      }
-    }
-
-    // Paint side bar
-    {
-      const x = GRID_WIDTH;
-      for (var col = 0; col < NUM_SCENES; col++) {
-        const y = col;
-        const [r, g, b] = trackBankHandler.colors[7 - y];
-
-        let light;
-        let isHeld = false;
-
-        if (isHeld) {
-          light = staticLight(x, y, ColorPalette.Purple);
-        } else if (r === 0 && g === 0 && b === 0) {
-          light = staticLight(x, y, ColorPalette.White);
-        } else {
-          light = rgbLight(x, y, r, g, b);
-        }
-
-        if (this.previousLights[lightIndex] !== light) {
-          lights += light;
-          this.previousLights[lightIndex] = light;
-          changedLights += 1;
-        }
-        lightIndex += 1;
-      }
-    }
-
-    // Paint top
-    {
-      const y = GRID_HEIGHT;
-      for (var x = 0; x < NUM_SCENES; x++) {
-        let light;
-        if (Buttons.isUp(x, y)) {
-          light = staticLight(x, y, ColorPalette.Purple);
-        } else if (Buttons.isCaptureMidi(x, y)) {
-          light = staticLight(x, y, ColorPalette.RedDarker);
-        } else {
-          light = staticLight(x, y, ColorPalette.Blue);
-        }
-
-        if (this.previousLights[lightIndex] !== light) {
-          lights += light;
-          this.previousLights[lightIndex] = light;
-          changedLights += 1;
-        }
-        lightIndex += 1;
-      }
-    }
-
-    // Paint logo
-    {
-      const light = pulsingLight(8, 8, ColorPalette.HotPink);
-      if (this.previousLights[lightIndex] !== light) {
-        lights += light;
-        this.previousLights[lightIndex] = light;
-        changedLights += 1;
-      }
-      lightIndex += 1;
-    }
-
-    if (changedLights > 0) {
-      const sysex = `F0 00 20 29 02 0C 03 ${lights} f7`;
-      sendSysex(sysex);
-    }
+    this.state.render(this, this.renderer);
+    this.renderer.present();
   }
 
   private maybeSetGridButtons = (x: number, y: number, isOn: boolean) => {
