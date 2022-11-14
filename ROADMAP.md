@@ -17,6 +17,7 @@
 - [ ] UX: Make side control buttons scene colors to help orient you. Make control buttons flash scene colors
 - [ ] Wire up deletion of clips. Make a double tap?
 - [ ] Add in 'menu' concept so you can modify volumes, pans, etc vs launching clips
+- [ ] Figure out a way to drive clip editing and arrangment editing with launchpad
 - [ ] Wire addition of new tracks
 - [ ] Add in quanitzation settings menu for track for launchpad. Maybe set under 'note'? Have it display text and use a slider.
 - [ ] Add in global stopping of project
