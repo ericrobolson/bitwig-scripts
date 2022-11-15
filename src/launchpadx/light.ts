@@ -25,7 +25,12 @@ const flashingLight = (
   colorA: ColorPalette,
   colorB: ColorPalette
 ): string => {
-  return light(x, y, LightType.Flashing, `${colorA} ${colorB}`);
+  return light(
+    x,
+    y,
+    LightType.Flashing,
+    `${getHexFromColorPalette(colorA)} ${getHexFromColorPalette(colorB)}`
+  );
 };
 
 const staticLight = (x: number, y: number, color: ColorPalette): string => {

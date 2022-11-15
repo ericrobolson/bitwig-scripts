@@ -23,6 +23,12 @@ const ContextRecordArm: Context = {
       return lp.lastContext();
     }
 
+    if (state == ButtonState.ToggledOn && isGridButton) {
+      getTrackFromGrid(y).arm().toggle();
+
+      return this;
+    }
+
     return contextDefaultTransition(lp, this);
   },
   isTargetButton: ControlButtons.isRecordArm,

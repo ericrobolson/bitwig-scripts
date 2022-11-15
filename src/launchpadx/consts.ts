@@ -51,7 +51,7 @@ const getHexFromColorPalette = (c: ColorPalette): string => {
     case ColorPalette.Green:
       return "57";
     case ColorPalette.GreenLighter:
-      return "15";
+      return "19";
     case ColorPalette.GreenDarker:
       return "17";
     case ColorPalette.Red:

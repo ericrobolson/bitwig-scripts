@@ -44,12 +44,6 @@ interface Context {
     y: number,
     isGridButton: boolean
   ): Context | null;
-  /**
-   * The state the context should render.
-   * @param lp
-   * @param renderQueue
-   */
-  render(lp: LaunchpadObject, renderQueue: RenderQueue): void;
 }
 
 /**
@@ -108,51 +102,53 @@ const getTrackFromGrid = (y: number): Track => {
   return trackBankHandler.bank.getItemAt(7 - y);
 };
 
-const paintNavigationButtons = (renderer: RenderQueue) => {
-  for (var x = 0; x < DIRECTIONAL_BTN_COUNT; x++) {
-    renderer.staticLight(x, GRID_HEIGHT, ColorPalette.Blue);
+const paintTrackViewCell = (
+  renderer: RenderQueue,
+  row: number,
+  col: number
+): void => {
+  // Y needs to be inverted.
+  const y = 7 - col;
+  const x = row;
+
+  const clip = trackBankHandler.clips[col][row];
+  const queuedForStop =
+    trackBankHandler.trackQueuedForStop[col] || clip.isStopQueued;
+
+  if (clip.isPlaybackQueued) {
+    renderer.pulsingLight(x, y, ColorPalette.GreenLighter);
+  } else if (queuedForStop) {
+    renderer.pulsingLight(x, y, ColorPalette.RedLighter);
+  } else if (clip.isRecordingQueued) {
+    renderer.pulsingLight(x, y, ColorPalette.RedLighter);
+  } else if (clip.isRecording) {
+    renderer.flashingLight(x, y, ColorPalette.RedDarker, ColorPalette.Red);
+  } else if (clip.isPlaying) {
+    renderer.flashingLight(
+      x,
+      y,
+      ColorPalette.GreenDarker,
+      ColorPalette.GreenLighter
+    );
+  } else if (clip.hasContent) {
+    const [clipR, clipG, clipB] = clip.color;
+    renderer.rgbLight(x, y, clipR, clipG, clipB);
+  } else {
+    const [trackR, trackG, trackB] = trackBankHandler.colors[col];
+    renderer.rgbLight(
+      x,
+      y,
+      trackR * BACKGROUND_LIGHT_STRENGTH,
+      trackG * BACKGROUND_LIGHT_STRENGTH,
+      trackB * BACKGROUND_LIGHT_STRENGTH
+    );
   }
 };
 
 const paintGridTrackView = (renderer: RenderQueue): void => {
   for (var row = 0; row < NUM_SCENES; row++) {
     for (var col = 0; col < NUM_SCENES; col++) {
-      // Y needs to be inverted.
-      const y = 7 - col;
-      const x = row;
-
-      const clip = trackBankHandler.clips[col][row];
-      const queuedForStop =
-        trackBankHandler.trackQueuedForStop[col] || clip.isStopQueued;
-
-      if (clip.isPlaybackQueued) {
-        renderer.pulsingLight(x, y, ColorPalette.GreenLighter);
-      } else if (queuedForStop) {
-        renderer.pulsingLight(x, y, ColorPalette.RedLighter);
-      } else if (clip.isRecordingQueued) {
-        renderer.pulsingLight(x, y, ColorPalette.RedLighter);
-      } else if (clip.isRecording) {
-        renderer.flashingLight(x, y, ColorPalette.RedDarker, ColorPalette.Red);
-      } else if (clip.isPlaying) {
-        renderer.flashingLight(
-          x,
-          y,
-          ColorPalette.GreenDarker,
-          ColorPalette.Green
-        );
-      } else if (clip.hasContent) {
-        const [clipR, clipG, clipB] = clip.color;
-        renderer.rgbLight(x, y, clipR, clipG, clipB);
-      } else {
-        const [trackR, trackG, trackB] = trackBankHandler.colors[col];
-        renderer.rgbLight(
-          x,
-          y,
-          trackR * BACKGROUND_LIGHT_STRENGTH,
-          trackG * BACKGROUND_LIGHT_STRENGTH,
-          trackB * BACKGROUND_LIGHT_STRENGTH
-        );
-      }
+      paintTrackViewCell(renderer, row, col);
     }
   }
 };
@@ -182,7 +178,7 @@ const paintColoredContext = (context: Context, renderer: RenderQueue) => {
     );
     paintFlashingGrid(
       renderer,
-      ColorPalette.HotPink,
+      ColorPalette.BlueLighter,
       ColorPalette.GreenLighter
     );
   }
@@ -198,22 +194,22 @@ const paintColoredContext = (context: Context, renderer: RenderQueue) => {
 
   // Paint other control buttons
   {
+    const draw = (x: number, y: number) => {
+      return context.isTargetButton(x, y)
+        ? renderer.pulsingLight(x, y, context.renderInstructions.targetButton)
+        : renderer.staticLight(x, y, context.renderInstructions.otherButtons);
+    };
+
     var x = 0;
     var y = GRID_HEIGHT;
+
     for (x = DIRECTIONAL_BTN_COUNT; x < NUM_SCENES; x++) {
-      renderer.pulsingLight(x, y, context.renderInstructions.otherButtons);
+      draw(x, y);
     }
 
     x = GRID_WIDTH;
     for (y = 0; y < NUM_SCENES; y++) {
-      const isTargetButton = context.isTargetButton(x, y)
-        ? renderer.staticLight(x, y, ColorPalette.Green)
-        : renderer.flashingLight(
-            x,
-            y,
-            ColorPalette.RedDarker,
-            ColorPalette.Red
-          );
+      draw(x, y);
     }
   }
 
