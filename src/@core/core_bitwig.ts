@@ -216,6 +216,8 @@ interface TrackBank {
 interface SettableBool {
   set(value: boolean): void;
   toggle(): void;
+  markInterested(): void;
+  addValueObserver: (callback: (value: boolean) => void) => void;
 }
 
 interface Track {

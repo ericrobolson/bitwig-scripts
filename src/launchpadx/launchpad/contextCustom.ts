@@ -1,6 +1,6 @@
-const ContextStopClip: Context = {
+const ContextCustom: Context = {
   title(): string {
-    return "ContextStopClip";
+    return "ContextCustom/Delete";
   },
   shouldReplaceHistory() {
     return false;
@@ -14,7 +14,7 @@ const ContextStopClip: Context = {
     x: number,
     y: number,
     isGridButton: boolean
-  ): Context {
+  ): Context | null {
     const shouldReturnToPrevious =
       this.isTargetButton(x, y) && state == ButtonState.ToggledOn;
 
@@ -23,18 +23,21 @@ const ContextStopClip: Context = {
     }
 
     if (state == ButtonState.ToggledOn && isGridButton) {
-      getTrackFromGrid(y).stop();
+      const track = getTrackFromGrid(y);
+      const clipLauncher = track.clipLauncherSlotBank();
+
+      clipLauncher.getItemAt(x).deleteObject();
 
       return this;
     }
 
     return contextDefaultTransition(lp, this);
   },
-  isTargetButton: ControlButtons.isStopClip,
+  isTargetButton: ControlButtons.isCustom,
   renderInstructions: {
-    targetButton: ColorPalette.Green,
-    navigationButtons: ColorPalette.Blue,
-    otherButtons: ColorPalette.Red,
+    targetButton: ColorPalette.Red,
+    navigationButtons: ColorPalette.Dirt,
+    otherButtons: ColorPalette.GreenDarker,
     grid: ColorPalette.DefaultTrackBehavior,
     gridOverride: null,
   },

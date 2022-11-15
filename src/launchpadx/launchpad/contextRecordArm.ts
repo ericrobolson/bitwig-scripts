@@ -15,9 +15,10 @@ const ContextRecordArm: Context = {
     y: number,
     isGridButton: boolean
   ): Context {
-    const triggerButton = lp.controlButtons().recordArm;
     const shouldReturnToPrevious =
-      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
+      this.isTargetButton(x, y) &&
+      !isGridButton &&
+      state == ButtonState.ToggledOn;
 
     if (shouldReturnToPrevious) {
       return lp.lastContext();
@@ -37,5 +38,21 @@ const ContextRecordArm: Context = {
     navigationButtons: ColorPalette.BlueLighter,
     otherButtons: ColorPalette.HotPink,
     grid: ColorPalette.DefaultTrackBehavior,
+    gridOverride: (renderer: RenderQueue, row: number, col: number) => {
+      // Y needs to be inverted.
+      const y = 7 - col;
+      const x = row;
+      const shouldDrawRecordArmed = x > 5 || x < 2;
+      if (trackBankHandler.trackIsArmed[col] && shouldDrawRecordArmed) {
+        renderer.flashingLight(
+          x,
+          y,
+          ColorPalette.RedDarker,
+          ColorPalette.RedLighter
+        );
+      } else {
+        paintTrackViewCell(renderer, row, col);
+      }
+    },
   },
 };

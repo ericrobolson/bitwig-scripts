@@ -14,6 +14,7 @@ class Clip {
 
 class TrackHandler {
   public readonly bank: TrackBank;
+  public readonly trackIsArmed: Array<boolean>;
   public readonly trackQueuedForStop: Array<boolean>;
   public readonly cursor: CursorTrack;
   public readonly colors: Array<[number, number, number]>;
@@ -31,6 +32,7 @@ class TrackHandler {
     this.colors = new Array(numTracks);
     this.clips = new Array(numTracks);
     this.trackQueuedForStop = new Array(numTracks);
+    this.trackIsArmed = new Array(numTracks);
 
     this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
     this.cursor = host.createCursorTrack(id, name, 0, 0, true);
@@ -56,6 +58,12 @@ class TrackHandler {
         element = track.volume();
         element.markInterested();
         element.setIndication(true);
+
+        element = track.arm();
+        element.markInterested();
+        element.addValueObserver((isArmed) => {
+          this.trackIsArmed[idx] = isArmed;
+        });
       }
 
       // Clip data

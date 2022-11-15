@@ -42,5 +42,6 @@ const ContextArrange: Context = {
     navigationButtons: ColorPalette.Green,
     otherButtons: ColorPalette.Orange,
     grid: ColorPalette.DefaultTrackBehavior,
+    gridOverride: null,
   },
 };

@@ -3,7 +3,10 @@ type RenderInstructions = {
   navigationButtons: ColorPalette;
   otherButtons: ColorPalette;
   grid: ColorPalette;
+  gridOverride: null | DrawGrid;
 };
+
+type DrawGrid = (renderer: RenderQueue, x: number, y: number) => void;
 
 interface Context {
   /**
@@ -61,6 +64,8 @@ const contextDefaultTransition = (
   {
     if (controlButtons.session) {
       return ContextArrange;
+    } else if (controlButtons.custom) {
+      return ContextCustom;
     } else if (controlButtons.volume) {
       //  return ContextVolume;
     } else if (controlButtons.pan) {
@@ -170,7 +175,15 @@ const paintFlashingGrid = (
 };
 
 const paintColoredContext = (context: Context, renderer: RenderQueue) => {
-  if (context.renderInstructions.grid === ColorPalette.DefaultTrackBehavior) {
+  if (context.renderInstructions.gridOverride !== null) {
+    for (var row = 0; row < NUM_SCENES; row++) {
+      for (var col = 0; col < NUM_SCENES; col++) {
+        context.renderInstructions.gridOverride(renderer, row, col);
+      }
+    }
+  } else if (
+    context.renderInstructions.grid === ColorPalette.DefaultTrackBehavior
+  ) {
     paintGridTrackView(renderer);
   } else {
     println(

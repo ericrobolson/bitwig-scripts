@@ -79,6 +79,7 @@ var TrackHandler = /** @class */ (function () {
         this.colors = new Array(numTracks);
         this.clips = new Array(numTracks);
         this.trackQueuedForStop = new Array(numTracks);
+        this.trackIsArmed = new Array(numTracks);
         this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
         this.cursor = host.createCursorTrack(id, name, 0, 0, true);
         var bankSize = this.bank.getSizeOfBank();
@@ -99,6 +100,11 @@ var TrackHandler = /** @class */ (function () {
                 element = track.volume();
                 element.markInterested();
                 element.setIndication(true);
+                element = track.arm();
+                element.markInterested();
+                element.addValueObserver(function (isArmed) {
+                    _this.trackIsArmed[idx] = isArmed;
+                });
             }
             // Clip data
             {
@@ -189,6 +195,8 @@ var ButtonState;
 })(ButtonState || (ButtonState = {}));
 var getHexFromColorPalette = function (c) {
     switch (c) {
+        case 18 /* ColorPalette.Yellow */:
+            return "74";
         case 15 /* ColorPalette.HotPink */:
             return "5F";
         case 16 /* ColorPalette.White */:
@@ -483,6 +491,7 @@ var TrackHandler = /** @class */ (function () {
         this.colors = new Array(numTracks);
         this.clips = new Array(numTracks);
         this.trackQueuedForStop = new Array(numTracks);
+        this.trackIsArmed = new Array(numTracks);
         this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
         this.cursor = host.createCursorTrack(id, name, 0, 0, true);
         var bankSize = this.bank.getSizeOfBank();
@@ -503,6 +512,11 @@ var TrackHandler = /** @class */ (function () {
                 element = track.volume();
                 element.markInterested();
                 element.setIndication(true);
+                element = track.arm();
+                element.markInterested();
+                element.addValueObserver(function (isArmed) {
+                    _this.trackIsArmed[idx] = isArmed;
+                });
             }
             // Clip data
             {
@@ -597,6 +611,9 @@ var contextDefaultTransition = function (lp, context) {
         if (controlButtons.session) {
             return ContextArrange;
         }
+        else if (controlButtons.custom) {
+            return ContextCustom;
+        }
         else if (controlButtons.volume) {
             //  return ContextVolume;
         }
@@ -690,7 +707,14 @@ var paintFlashingGrid = function (renderer, a, b) {
     }
 };
 var paintColoredContext = function (context, renderer) {
-    if (context.renderInstructions.grid === 2 /* ColorPalette.DefaultTrackBehavior */) {
+    if (context.renderInstructions.gridOverride !== null) {
+        for (var row = 0; row < NUM_SCENES; row++) {
+            for (var col = 0; col < NUM_SCENES; col++) {
+                context.renderInstructions.gridOverride(renderer, row, col);
+            }
+        }
+    }
+    else if (context.renderInstructions.grid === 2 /* ColorPalette.DefaultTrackBehavior */) {
         paintGridTrackView(renderer);
     }
     else {
@@ -759,106 +783,41 @@ var ContextArrange = {
         navigationButtons: 9 /* ColorPalette.Green */,
         otherButtons: 3 /* ColorPalette.Orange */,
         grid: 2 /* ColorPalette.DefaultTrackBehavior */,
+        gridOverride: null,
     },
 };
 //
-// src/out/launchpad/contextMute.js
+// src/out/launchpad/contextCustom.js
 //
-/*
-const ContextMute: Context = {
-  title(): string {
-    return "ContextMute";
-  },
-  isTargetButton: (x: number, y: number): boolean =>
-    ControlButtons.isMute(x, y),
-  shouldReplaceHistory() {
-    return false;
-  },
-  transition(
-    lp: LaunchpadObject,
-    note: number,
-    velocity: number,
-    prevVelocity: number,
-    state: ButtonState,
-    x: number,
-    y: number,
-    isGridButton: boolean
-  ): Context {
-    const triggerButton = lp.controlButtons().mute;
-    const shouldReturnToPrevious =
-      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-
-    if (shouldReturnToPrevious) {
-      return lp.lastContext();
-    }
-
-    return contextDefaultTransition(lp, this);
-  },
-  render(lp: LaunchpadObject, renderer: RenderQueue) {
-    // Paint grid
-    {
-      for (var row = 0; row < NUM_SCENES + 1; row++) {
-        for (var col = 0; col < NUM_SCENES + 1; col++) {
-          renderer.staticLight(row, col, ColorPalette.Blue);
+var ContextCustom = {
+    title: function () {
+        return "ContextCustom/Delete";
+    },
+    shouldReplaceHistory: function () {
+        return false;
+    },
+    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
+        var shouldReturnToPrevious = this.isTargetButton(x, y) && state == ButtonState.ToggledOn;
+        if (shouldReturnToPrevious) {
+            return lp.lastContext();
         }
-      }
-    }
-
-    // Paint logo
-    {
-      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
-    }
-  },
-};
-*/
-//
-// src/out/launchpad/contextPanControl.js
-//
-/*
-const ContextPanControl: Context = {
-  title(): string {
-    return "ContextPanControl";
-  },
-  shouldReplaceHistory() {
-    return false;
-  },
-  transition(
-    lp: LaunchpadObject,
-    note: number,
-    velocity: number,
-    prevVelocity: number,
-    state: ButtonState,
-    x: number,
-    y: number,
-    isGridButton: boolean
-  ): Context {
-    const triggerButton = lp.controlButtons().pan;
-    const shouldReturnToPrevious =
-      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-
-    if (shouldReturnToPrevious) {
-      return lp.lastContext();
-    }
-
-    return contextDefaultTransition(lp, this);
-  },
-  render(lp: LaunchpadObject, renderer: RenderQueue) {
-    // Paint grid
-    {
-      for (var row = 0; row < NUM_SCENES + 1; row++) {
-        for (var col = 0; col < NUM_SCENES + 1; col++) {
-          renderer.staticLight(row, col, ColorPalette.BlueLighter);
+        if (state == ButtonState.ToggledOn && isGridButton) {
+            var track = getTrackFromGrid(y);
+            var clipLauncher = track.clipLauncherSlotBank();
+            clipLauncher.getItemAt(x).deleteObject();
+            return this;
         }
-      }
-    }
-
-    // Paint logo
-    {
-      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
-    }
-  },
+        return contextDefaultTransition(lp, this);
+    },
+    isTargetButton: ControlButtons.isCustom,
+    renderInstructions: {
+        targetButton: 6 /* ColorPalette.Red */,
+        navigationButtons: 17 /* ColorPalette.Dirt */,
+        otherButtons: 11 /* ColorPalette.GreenDarker */,
+        grid: 2 /* ColorPalette.DefaultTrackBehavior */,
+        gridOverride: null,
+    },
 };
-*/
 //
 // src/out/launchpad/contextRecordArm.js
 //
@@ -870,8 +829,9 @@ var ContextRecordArm = {
         return false;
     },
     transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var triggerButton = lp.controlButtons().recordArm;
-        var shouldReturnToPrevious = triggerButton && !isGridButton && state == ButtonState.ToggledOn;
+        var shouldReturnToPrevious = this.isTargetButton(x, y) &&
+            !isGridButton &&
+            state == ButtonState.ToggledOn;
         if (shouldReturnToPrevious) {
             return lp.lastContext();
         }
@@ -887,152 +847,20 @@ var ContextRecordArm = {
         navigationButtons: 13 /* ColorPalette.BlueLighter */,
         otherButtons: 15 /* ColorPalette.HotPink */,
         grid: 2 /* ColorPalette.DefaultTrackBehavior */,
+        gridOverride: function (renderer, row, col) {
+            // Y needs to be inverted.
+            var y = 7 - col;
+            var x = row;
+            var shouldDrawRecordArmed = x > 5 || x < 2;
+            if (trackBankHandler.trackIsArmed[col] && shouldDrawRecordArmed) {
+                renderer.flashingLight(x, y, 8 /* ColorPalette.RedDarker */, 7 /* ColorPalette.RedLighter */);
+            }
+            else {
+                paintTrackViewCell(renderer, row, col);
+            }
+        },
     },
 };
-//
-// src/out/launchpad/contextSendA.js
-//
-/*
-const ContextSendA: Context = {
-  title(): string {
-    return "ContextSendA";
-  },
-  shouldReplaceHistory() {
-    return false;
-  },
-  transition(
-    lp: LaunchpadObject,
-    note: number,
-    velocity: number,
-    prevVelocity: number,
-    state: ButtonState,
-    x: number,
-    y: number,
-    isGridButton: boolean
-  ): Context {
-    const triggerButton = lp.controlButtons().sendA;
-    const shouldReturnToPrevious =
-      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-
-    if (shouldReturnToPrevious) {
-      return lp.lastContext();
-    }
-
-    return contextDefaultTransition(lp, this);
-  },
-  render(lp: LaunchpadObject, renderer: RenderQueue) {
-    // Paint grid
-    {
-      for (var row = 0; row < NUM_SCENES + 1; row++) {
-        for (var col = 0; col < NUM_SCENES + 1; col++) {
-          renderer.staticLight(row, col, ColorPalette.Dirt);
-        }
-      }
-    }
-
-    // Paint logo
-    {
-      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
-    }
-  },
-};
-*/
-//
-// src/out/launchpad/contextSendB.js
-//
-/*
-const ContextSendB: Context = {
-  title(): string {
-    return "ContextSendB";
-  },
-  shouldReplaceHistory() {
-    return false;
-  },
-  transition(
-    lp: LaunchpadObject,
-    note: number,
-    velocity: number,
-    prevVelocity: number,
-    state: ButtonState,
-    x: number,
-    y: number,
-    isGridButton: boolean
-  ): Context {
-    const triggerButton = lp.controlButtons().sendB;
-    const shouldReturnToPrevious =
-      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-
-    if (shouldReturnToPrevious) {
-      return lp.lastContext();
-    }
-
-    return contextDefaultTransition(lp, this);
-  },
-  render(lp: LaunchpadObject, renderer: RenderQueue) {
-    // Paint grid
-    {
-      for (var row = 0; row < NUM_SCENES + 1; row++) {
-        for (var col = 0; col < NUM_SCENES + 1; col++) {
-          renderer.staticLight(row, col, ColorPalette.Green);
-        }
-      }
-    }
-
-    // Paint logo
-    {
-      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
-    }
-  },
-};
-*/
-//
-// src/out/launchpad/contextSolo.js
-//
-/*
-const ContextSolo: Context = {
-  title(): string {
-    return "ContextSolo";
-  },
-  shouldReplaceHistory() {
-    return false;
-  },
-  transition(
-    lp: LaunchpadObject,
-    note: number,
-    velocity: number,
-    prevVelocity: number,
-    state: ButtonState,
-    x: number,
-    y: number,
-    isGridButton: boolean
-  ): Context {
-    const triggerButton = lp.controlButtons().solo;
-    const shouldReturnToPrevious =
-      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-
-    if (shouldReturnToPrevious) {
-      return lp.lastContext();
-    }
-
-    return contextDefaultTransition(lp, this);
-  },
-  render(lp: LaunchpadObject, renderer: RenderQueue) {
-    // Paint grid
-    {
-      for (var row = 0; row < NUM_SCENES + 1; row++) {
-        for (var col = 0; col < NUM_SCENES + 1; col++) {
-          renderer.staticLight(row, col, ColorPalette.GreenLighter);
-        }
-      }
-    }
-
-    // Paint logo
-    {
-      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
-    }
-  },
-};
-*/
 //
 // src/out/launchpad/contextStopClip.js
 //
@@ -1044,7 +872,7 @@ var ContextStopClip = {
         return false;
     },
     transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var shouldReturnToPrevious = ControlButtons.isStopClip(x, y) && state == ButtonState.ToggledOn;
+        var shouldReturnToPrevious = this.isTargetButton(x, y) && state == ButtonState.ToggledOn;
         if (shouldReturnToPrevious) {
             return lp.lastContext();
         }
@@ -1060,56 +888,9 @@ var ContextStopClip = {
         navigationButtons: 12 /* ColorPalette.Blue */,
         otherButtons: 6 /* ColorPalette.Red */,
         grid: 2 /* ColorPalette.DefaultTrackBehavior */,
+        gridOverride: null,
     },
 };
-//
-// src/out/launchpad/contextVolume.js
-//
-/*
-const ContextVolume: Context = {
-  title(): string {
-    return "ContextVolume";
-  },
-  shouldReplaceHistory() {
-    return false;
-  },
-  transition(
-    lp: LaunchpadObject,
-    note: number,
-    velocity: number,
-    prevVelocity: number,
-    state: ButtonState,
-    x: number,
-    y: number,
-    isGridButton: boolean
-  ): Context | null {
-    const triggerButton = lp.controlButtons().volume;
-    const shouldReturnToPrevious =
-      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-
-    if (shouldReturnToPrevious) {
-      return lp.lastContext();
-    }
-
-    return contextDefaultTransition(lp, this);
-  },
-  render(lp: LaunchpadObject, renderer: RenderQueue) {
-    // Paint grid
-    {
-      for (var row = 0; row < NUM_SCENES + 1; row++) {
-        for (var col = 0; col < NUM_SCENES + 1; col++) {
-          renderer.staticLight(row, col, ColorPalette.HotPink);
-        }
-      }
-    }
-
-    // Paint logo
-    {
-      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
-    }
-  },
-};
-*/
 //
 // src/out/launchpad/launchpadx.js
 //
@@ -1274,9 +1055,295 @@ var LaunchpadObject = /** @class */ (function () {
     return LaunchpadObject;
 }());
 //
-// src/out/**/**/*.js
+// src/out/launchpad/todo_contexts/contextMute.js
 //
+/*
+const ContextMute: Context = {
+  title(): string {
+    return "ContextMute";
+  },
+  isTargetButton: (x: number, y: number): boolean =>
+    ControlButtons.isMute(x, y),
+  shouldReplaceHistory() {
+    return false;
+  },
+  transition(
+    lp: LaunchpadObject,
+    note: number,
+    velocity: number,
+    prevVelocity: number,
+    state: ButtonState,
+    x: number,
+    y: number,
+    isGridButton: boolean
+  ): Context {
+    const triggerButton = lp.controlButtons().mute;
+    const shouldReturnToPrevious =
+      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
 
+    if (shouldReturnToPrevious) {
+      return lp.lastContext();
+    }
+
+    return contextDefaultTransition(lp, this);
+  },
+  render(lp: LaunchpadObject, renderer: RenderQueue) {
+    // Paint grid
+    {
+      for (var row = 0; row < NUM_SCENES + 1; row++) {
+        for (var col = 0; col < NUM_SCENES + 1; col++) {
+          renderer.staticLight(row, col, ColorPalette.Blue);
+        }
+      }
+    }
+
+    // Paint logo
+    {
+      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
+    }
+  },
+};
+*/
+//
+// src/out/launchpad/todo_contexts/contextPanControl.js
+//
+/*
+const ContextPanControl: Context = {
+  title(): string {
+    return "ContextPanControl";
+  },
+  shouldReplaceHistory() {
+    return false;
+  },
+  transition(
+    lp: LaunchpadObject,
+    note: number,
+    velocity: number,
+    prevVelocity: number,
+    state: ButtonState,
+    x: number,
+    y: number,
+    isGridButton: boolean
+  ): Context {
+    const triggerButton = lp.controlButtons().pan;
+    const shouldReturnToPrevious =
+      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
+
+    if (shouldReturnToPrevious) {
+      return lp.lastContext();
+    }
+
+    return contextDefaultTransition(lp, this);
+  },
+  render(lp: LaunchpadObject, renderer: RenderQueue) {
+    // Paint grid
+    {
+      for (var row = 0; row < NUM_SCENES + 1; row++) {
+        for (var col = 0; col < NUM_SCENES + 1; col++) {
+          renderer.staticLight(row, col, ColorPalette.BlueLighter);
+        }
+      }
+    }
+
+    // Paint logo
+    {
+      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
+    }
+  },
+};
+*/
+//
+// src/out/launchpad/todo_contexts/contextSendA.js
+//
+/*
+const ContextSendA: Context = {
+  title(): string {
+    return "ContextSendA";
+  },
+  shouldReplaceHistory() {
+    return false;
+  },
+  transition(
+    lp: LaunchpadObject,
+    note: number,
+    velocity: number,
+    prevVelocity: number,
+    state: ButtonState,
+    x: number,
+    y: number,
+    isGridButton: boolean
+  ): Context {
+    const triggerButton = lp.controlButtons().sendA;
+    const shouldReturnToPrevious =
+      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
+
+    if (shouldReturnToPrevious) {
+      return lp.lastContext();
+    }
+
+    return contextDefaultTransition(lp, this);
+  },
+  render(lp: LaunchpadObject, renderer: RenderQueue) {
+    // Paint grid
+    {
+      for (var row = 0; row < NUM_SCENES + 1; row++) {
+        for (var col = 0; col < NUM_SCENES + 1; col++) {
+          renderer.staticLight(row, col, ColorPalette.Dirt);
+        }
+      }
+    }
+
+    // Paint logo
+    {
+      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
+    }
+  },
+};
+*/
+//
+// src/out/launchpad/todo_contexts/contextSendB.js
+//
+/*
+const ContextSendB: Context = {
+  title(): string {
+    return "ContextSendB";
+  },
+  shouldReplaceHistory() {
+    return false;
+  },
+  transition(
+    lp: LaunchpadObject,
+    note: number,
+    velocity: number,
+    prevVelocity: number,
+    state: ButtonState,
+    x: number,
+    y: number,
+    isGridButton: boolean
+  ): Context {
+    const triggerButton = lp.controlButtons().sendB;
+    const shouldReturnToPrevious =
+      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
+
+    if (shouldReturnToPrevious) {
+      return lp.lastContext();
+    }
+
+    return contextDefaultTransition(lp, this);
+  },
+  render(lp: LaunchpadObject, renderer: RenderQueue) {
+    // Paint grid
+    {
+      for (var row = 0; row < NUM_SCENES + 1; row++) {
+        for (var col = 0; col < NUM_SCENES + 1; col++) {
+          renderer.staticLight(row, col, ColorPalette.Green);
+        }
+      }
+    }
+
+    // Paint logo
+    {
+      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
+    }
+  },
+};
+*/
+//
+// src/out/launchpad/todo_contexts/contextSolo.js
+//
+/*
+const ContextSolo: Context = {
+  title(): string {
+    return "ContextSolo";
+  },
+  shouldReplaceHistory() {
+    return false;
+  },
+  transition(
+    lp: LaunchpadObject,
+    note: number,
+    velocity: number,
+    prevVelocity: number,
+    state: ButtonState,
+    x: number,
+    y: number,
+    isGridButton: boolean
+  ): Context {
+    const triggerButton = lp.controlButtons().solo;
+    const shouldReturnToPrevious =
+      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
+
+    if (shouldReturnToPrevious) {
+      return lp.lastContext();
+    }
+
+    return contextDefaultTransition(lp, this);
+  },
+  render(lp: LaunchpadObject, renderer: RenderQueue) {
+    // Paint grid
+    {
+      for (var row = 0; row < NUM_SCENES + 1; row++) {
+        for (var col = 0; col < NUM_SCENES + 1; col++) {
+          renderer.staticLight(row, col, ColorPalette.GreenLighter);
+        }
+      }
+    }
+
+    // Paint logo
+    {
+      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
+    }
+  },
+};
+*/
+//
+// src/out/launchpad/todo_contexts/contextVolume.js
+//
+/*
+const ContextVolume: Context = {
+  title(): string {
+    return "ContextVolume";
+  },
+  shouldReplaceHistory() {
+    return false;
+  },
+  transition(
+    lp: LaunchpadObject,
+    note: number,
+    velocity: number,
+    prevVelocity: number,
+    state: ButtonState,
+    x: number,
+    y: number,
+    isGridButton: boolean
+  ): Context | null {
+    const triggerButton = lp.controlButtons().volume;
+    const shouldReturnToPrevious =
+      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
+
+    if (shouldReturnToPrevious) {
+      return lp.lastContext();
+    }
+
+    return contextDefaultTransition(lp, this);
+  },
+  render(lp: LaunchpadObject, renderer: RenderQueue) {
+    // Paint grid
+    {
+      for (var row = 0; row < NUM_SCENES + 1; row++) {
+        for (var col = 0; col < NUM_SCENES + 1; col++) {
+          renderer.staticLight(row, col, ColorPalette.HotPink);
+        }
+      }
+    }
+
+    // Paint logo
+    {
+      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
+    }
+  },
+};
+*/
 //
 // src/out/launchpadX.control.js
 //
