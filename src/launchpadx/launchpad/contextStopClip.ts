@@ -30,37 +30,11 @@ const ContextStopClip: Context = {
 
     return contextDefaultTransition(lp, this);
   },
-  render(lp: LaunchpadObject, renderer: RenderQueue) {
-    paintGridTrackView(renderer);
-
-    // Paint other colors
-    {
-      paintNavigationButtons(renderer);
-      paintTopRow(renderer);
-      paintSideBar(renderer);
-    }
-
-    // Paint logo
-    {
-      renderer.pulsingLight(GRID_WIDTH, GRID_HEIGHT, ColorPalette.RedLighter);
-    }
+  isTargetButton: ControlButtons.isStopClip,
+  renderInstructions: {
+    targetButton: ColorPalette.Green,
+    navigationButtons: ColorPalette.Blue,
+    otherButtons: ColorPalette.Red,
+    grid: ColorPalette.DefaultTrackBehavior,
   },
-};
-
-const DIRECTIONAL_BTN_COUNT = 4;
-
-const paintTopRow = (renderer: RenderQueue) => {
-  const y = GRID_HEIGHT;
-  for (var x = DIRECTIONAL_BTN_COUNT; x < NUM_SCENES; x++) {
-    renderer.flashingLight(x, y, ColorPalette.RedDarker, ColorPalette.Red);
-  }
-};
-
-const paintSideBar = (renderer: RenderQueue) => {
-  const x = GRID_WIDTH;
-  for (var y = 0; y < NUM_SCENES; y++) {
-    ControlButtons.isStopClip(x, y)
-      ? renderer.staticLight(x, y, ColorPalette.Green)
-      : renderer.flashingLight(x, y, ColorPalette.RedDarker, ColorPalette.Red);
-  }
 };

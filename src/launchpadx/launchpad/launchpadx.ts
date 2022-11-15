@@ -118,7 +118,7 @@ class LaunchpadObject {
    * Flushes the Launchpad, performing any rendering updates.
    */
   flush() {
-    this.context.render(this, this.renderer);
+    paintColoredContext(this.context, this.renderer);
     this.renderer.present();
   }
 

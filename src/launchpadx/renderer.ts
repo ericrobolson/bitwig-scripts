@@ -71,6 +71,7 @@ class LaunchpadRenderer implements Renderer, RenderQueue {
   present(): void {
     if (this.isDirty) {
       const sysex = `F0 00 20 29 02 0C 03 ${this.queuedLights} f7`;
+      println(this.queuedLights);
       sendSysex(sysex);
       this.clearQueue();
     }

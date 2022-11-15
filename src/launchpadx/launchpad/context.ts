@@ -1,3 +1,10 @@
+type RenderInstructions = {
+  targetButton: ColorPalette;
+  navigationButtons: ColorPalette;
+  otherButtons: ColorPalette;
+  grid: ColorPalette;
+};
+
 interface Context {
   /**
    * The title of the context. Used for debugging.
@@ -7,6 +14,15 @@ interface Context {
    * Returns whether the context should replace history or not. Typically things such as volume control or recording arming will not replace history, but the default arrange mode or edit modes should.
    */
   shouldReplaceHistory(): boolean;
+
+  /**
+   * Returns whether the given coordinates are the target button.
+   * If not present means that there is no target button.
+   */
+  isTargetButton: (x: number, y: number) => boolean;
+
+  renderInstructions: RenderInstructions;
+
   /**
    * Attempts to transition the context. If no new context transition would be made, return null.
    * @param lp
@@ -52,19 +68,19 @@ const contextDefaultTransition = (
     if (controlButtons.session) {
       return ContextArrange;
     } else if (controlButtons.volume) {
-      return ContextVolume;
+      //  return ContextVolume;
     } else if (controlButtons.pan) {
-      return ContextPanControl;
+      //  return ContextPanControl;
     } else if (controlButtons.sendA) {
-      return ContextSendA;
+      //   return ContextSendA;
     } else if (controlButtons.sendB) {
-      return ContextSendB;
+      //   return ContextSendB;
     } else if (controlButtons.stopClip) {
       return ContextStopClip;
     } else if (controlButtons.mute) {
-      return ContextMute;
+      //  return ContextMute;
     } else if (controlButtons.solo) {
-      return ContextSolo;
+      // return ContextSolo;
     } else if (controlButtons.recordArm) {
       return ContextRecordArm;
     }
@@ -138,5 +154,71 @@ const paintGridTrackView = (renderer: RenderQueue): void => {
         );
       }
     }
+  }
+};
+
+const paintFlashingGrid = (
+  renderer: RenderQueue,
+  a: ColorPalette,
+  b: ColorPalette
+): void => {
+  for (var row = 0; row < NUM_SCENES; row++) {
+    for (var col = 0; col < NUM_SCENES; col++) {
+      // Y needs to be inverted.
+      const y = 7 - col;
+      const x = row;
+
+      renderer.flashingLight(x, y, a, b);
+    }
+  }
+};
+
+const paintColoredContext = (context: Context, renderer: RenderQueue) => {
+  if (context.renderInstructions.grid === ColorPalette.DefaultTrackBehavior) {
+    paintGridTrackView(renderer);
+  } else {
+    println(
+      `Need to figure out how I want to do alternate grid painting behavior. Defaulting to flashing pink and green.`
+    );
+    paintFlashingGrid(
+      renderer,
+      ColorPalette.HotPink,
+      ColorPalette.GreenLighter
+    );
+  }
+
+  // Navigation buttons are secondary
+  for (var x = 0; x < DIRECTIONAL_BTN_COUNT; x++) {
+    renderer.staticLight(
+      x,
+      GRID_HEIGHT,
+      context.renderInstructions.navigationButtons
+    );
+  }
+
+  // Paint other control buttons
+  {
+    var x = 0;
+    var y = GRID_HEIGHT;
+    for (x = DIRECTIONAL_BTN_COUNT; x < NUM_SCENES; x++) {
+      renderer.pulsingLight(x, y, context.renderInstructions.otherButtons);
+    }
+
+    x = GRID_WIDTH;
+    for (y = 0; y < NUM_SCENES; y++) {
+      const isTargetButton = context.isTargetButton(x, y)
+        ? renderer.staticLight(x, y, ColorPalette.Green)
+        : renderer.flashingLight(
+            x,
+            y,
+            ColorPalette.RedDarker,
+            ColorPalette.Red
+          );
+    }
+  }
+
+  // Paint logo
+  {
+    renderer.pulsingLight(GRID_WIDTH, GRID_HEIGHT, ColorPalette.RedLighter);
   }
 };

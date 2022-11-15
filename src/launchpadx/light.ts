@@ -29,9 +29,9 @@ const flashingLight = (
 };
 
 const staticLight = (x: number, y: number, color: ColorPalette): string => {
-  return light(x, y, LightType.Static, color);
+  return light(x, y, LightType.Static, getHexFromColorPalette(color));
 };
 
 const pulsingLight = (x: number, y: number, color: ColorPalette): string => {
-  return light(x, y, LightType.Pulsing, color);
+  return light(x, y, LightType.Pulsing, getHexFromColorPalette(color));
 };

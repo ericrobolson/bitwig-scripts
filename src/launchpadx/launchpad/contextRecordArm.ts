@@ -25,19 +25,11 @@ const ContextRecordArm: Context = {
 
     return contextDefaultTransition(lp, this);
   },
-  render(lp: LaunchpadObject, renderer: RenderQueue) {
-    // Paint grid
-    {
-      for (var row = 0; row < NUM_SCENES + 1; row++) {
-        for (var col = 0; col < NUM_SCENES + 1; col++) {
-          renderer.staticLight(row, col, ColorPalette.RedDarker);
-        }
-      }
-    }
-
-    // Paint logo
-    {
-      renderer.pulsingLight(8, 8, ColorPalette.BlueDarker);
-    }
+  isTargetButton: ControlButtons.isRecordArm,
+  renderInstructions: {
+    targetButton: ColorPalette.GreenLighter,
+    navigationButtons: ColorPalette.BlueLighter,
+    otherButtons: ColorPalette.HotPink,
+    grid: ColorPalette.DefaultTrackBehavior,
   },
 };

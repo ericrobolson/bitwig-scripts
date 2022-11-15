@@ -1,7 +1,10 @@
+/*
 const ContextMute: Context = {
   title(): string {
     return "ContextMute";
   },
+  isTargetButton: (x: number, y: number): boolean =>
+    ControlButtons.isMute(x, y),
   shouldReplaceHistory() {
     return false;
   },
@@ -41,3 +44,4 @@ const ContextMute: Context = {
     }
   },
 };
+*/

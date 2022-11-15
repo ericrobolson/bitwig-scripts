@@ -36,6 +36,7 @@ const ContextArrange: Context = {
 
     return null;
   },
+  /*
   render(lp: LaunchpadObject, renderer: RenderQueue) {
     paintGridTrackView(renderer);
 
@@ -76,5 +77,13 @@ const ContextArrange: Context = {
     {
       renderer.pulsingLight(8, 8, ColorPalette.HotPink);
     }
+  },*/
+  isTargetButton: ControlButtons.isSession,
+
+  renderInstructions: {
+    targetButton: ColorPalette.Blue,
+    navigationButtons: ColorPalette.Green,
+    otherButtons: ColorPalette.Orange,
+    grid: ColorPalette.DefaultTrackBehavior,
   },
 };
