@@ -219,52 +219,52 @@ var ControlButtons = /** @class */ (function () {
         this.solo = false;
         this.recordArm = false;
     }
-    ControlButtons.prototype.isUp = function (x, y) {
+    ControlButtons.isUp = function (x, y) {
         return x == 0 && y == GRID_HEIGHT;
     };
-    ControlButtons.prototype.isDown = function (x, y) {
+    ControlButtons.isDown = function (x, y) {
         return x == 1 && y == GRID_HEIGHT;
     };
-    ControlButtons.prototype.isLeft = function (x, y) {
+    ControlButtons.isLeft = function (x, y) {
         return x == 2 && y == GRID_HEIGHT;
     };
-    ControlButtons.prototype.isRight = function (x, y) {
+    ControlButtons.isRight = function (x, y) {
         return x == 3 && y == GRID_HEIGHT;
     };
-    ControlButtons.prototype.isSession = function (x, y) {
+    ControlButtons.isSession = function (x, y) {
         return x == 4 && y == GRID_HEIGHT;
     };
-    ControlButtons.prototype.isNote = function (x, y) {
+    ControlButtons.isNote = function (x, y) {
         return x == 5 && y == GRID_HEIGHT;
     };
-    ControlButtons.prototype.isCustom = function (x, y) {
+    ControlButtons.isCustom = function (x, y) {
         return x == 6 && y == GRID_HEIGHT;
     };
-    ControlButtons.prototype.isCaptureMidi = function (x, y) {
+    ControlButtons.isCaptureMidi = function (x, y) {
         return x == 7 && y == GRID_HEIGHT;
     };
-    ControlButtons.prototype.isVolume = function (x, y) {
+    ControlButtons.isVolume = function (x, y) {
         return x == GRID_WIDTH && y == 7;
     };
-    ControlButtons.prototype.isPan = function (x, y) {
+    ControlButtons.isPan = function (x, y) {
         return x == GRID_WIDTH && y == 6;
     };
-    ControlButtons.prototype.isSendA = function (x, y) {
+    ControlButtons.isSendA = function (x, y) {
         return x == GRID_WIDTH && y == 5;
     };
-    ControlButtons.prototype.isSendB = function (x, y) {
+    ControlButtons.isSendB = function (x, y) {
         return x == GRID_WIDTH && y == 4;
     };
-    ControlButtons.prototype.isStopClip = function (x, y) {
+    ControlButtons.isStopClip = function (x, y) {
         return x == GRID_WIDTH && y == 3;
     };
-    ControlButtons.prototype.isMute = function (x, y) {
+    ControlButtons.isMute = function (x, y) {
         return x == GRID_WIDTH && y == 2;
     };
-    ControlButtons.prototype.isSolo = function (x, y) {
+    ControlButtons.isSolo = function (x, y) {
         return x == GRID_WIDTH && y == 1;
     };
-    ControlButtons.prototype.isRecordArm = function (x, y) {
+    ControlButtons.isRecordArm = function (x, y) {
         return x == GRID_WIDTH && y == 0;
     };
     return ControlButtons;
@@ -294,27 +294,6 @@ var GridButtons = /** @class */ (function () {
 //
 // src/out/light.js
 //
-var setClipLight = function (x, y, clip, renderer) {
-    if (clip.isRecordingQueued) {
-        renderer.pulsingLight(x, y, "04" /* ColorPalette.RedLighter */);
-    }
-    else if (clip.isPlaybackQueued) {
-        renderer.pulsingLight(x, y, "14" /* ColorPalette.GreenLighter */);
-    }
-    else if (clip.isStopQueued) {
-        renderer.pulsingLight(x, y, "47" /* ColorPalette.Dirt */);
-    }
-    else if (clip.isRecording) {
-        renderer.flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
-    }
-    else if (clip.isPlaying) {
-        renderer.flashingLight(x, y, "7B" /* ColorPalette.GreenDarker */, "57" /* ColorPalette.Green */);
-    }
-    else {
-        var _a = clip.color, clipR = _a[0], clipG = _a[1], clipB = _a[2];
-        renderer.rgbLight(x, y, clipR, clipG, clipB);
-    }
-};
 var light = function (x, y, type, color) {
     var index = x + 1 + (y + 1) * 10;
     return "".concat(type, " ").concat(uint8ToHex(index), " ").concat(color);
@@ -571,7 +550,10 @@ var contextDefaultTransition = function (lp, context) {
     var controlButtons = lp.controlButtons();
     // Non navigation control buttons
     {
-        if (controlButtons.volume) {
+        if (controlButtons.session) {
+            return ContextArrange;
+        }
+        else if (controlButtons.volume) {
             return ContextVolume;
         }
         else if (controlButtons.pan) {
@@ -613,10 +595,47 @@ var contextDefaultTransition = function (lp, context) {
     }
     return context;
 };
-var getClipLauncherFromTrackGrid = function (y) {
-    var track = trackBankHandler.bank.getItemAt(7 - y);
-    var clipLauncher = track.clipLauncherSlotBank();
-    return clipLauncher;
+var getTrackFromGrid = function (y) {
+    return trackBankHandler.bank.getItemAt(7 - y);
+};
+var paintNavigationButtons = function (renderer) {
+    for (var x = 0; x < DIRECTIONAL_BTN_COUNT; x++) {
+        renderer.staticLight(x, GRID_HEIGHT, "4F" /* ColorPalette.Blue */);
+    }
+};
+var paintGridTrackView = function (renderer) {
+    for (var row = 0; row < NUM_SCENES; row++) {
+        for (var col = 0; col < NUM_SCENES; col++) {
+            // Y needs to be inverted.
+            var y = 7 - col;
+            var x = row;
+            var clip = trackBankHandler.clips[col][row];
+            var queuedForStop = trackBankHandler.trackQueuedForStop[col] || clip.isStopQueued;
+            if (clip.isPlaybackQueued) {
+                renderer.pulsingLight(x, y, "14" /* ColorPalette.GreenLighter */);
+            }
+            else if (queuedForStop) {
+                renderer.pulsingLight(x, y, "04" /* ColorPalette.RedLighter */);
+            }
+            else if (clip.isRecordingQueued) {
+                renderer.pulsingLight(x, y, "04" /* ColorPalette.RedLighter */);
+            }
+            else if (clip.isRecording) {
+                renderer.flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
+            }
+            else if (clip.isPlaying) {
+                renderer.flashingLight(x, y, "7B" /* ColorPalette.GreenDarker */, "57" /* ColorPalette.Green */);
+            }
+            else if (clip.hasContent) {
+                var _a = clip.color, clipR = _a[0], clipG = _a[1], clipB = _a[2];
+                renderer.rgbLight(x, y, clipR, clipG, clipB);
+            }
+            else {
+                var _b = trackBankHandler.colors[col], trackR = _b[0], trackG = _b[1], trackB = _b[2];
+                renderer.rgbLight(x, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
+            }
+        }
+    }
 };
 //
 // src/out/launchpad/contextArrange.js
@@ -631,9 +650,8 @@ var ContextArrange = {
     transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
         var controlButtons = lp.controlButtons();
         if (state == ButtonState.ToggledOn && isGridButton) {
-            var clipLauncher = getClipLauncherFromTrackGrid(y);
-            // track.select();
-            // clipLauncher.select(x);
+            var track = getTrackFromGrid(y);
+            var clipLauncher = track.clipLauncherSlotBank();
             if (controlButtons.record) {
                 clipLauncher.record(x);
             }
@@ -642,6 +660,7 @@ var ContextArrange = {
                 clipLauncher.getItemAt(x).deleteObject();
             }
             else {
+                clipLauncher.select(x);
                 clipLauncher.launch(x);
             }
             return this;
@@ -649,7 +668,6 @@ var ContextArrange = {
         return null;
     },
     render: function (lp, renderer) {
-        var controlButtons = lp.controlButtons();
         paintGridTrackView(renderer);
         // Paint side bar
         {
@@ -671,12 +689,10 @@ var ContextArrange = {
         }
         // Paint top
         {
+            paintNavigationButtons(renderer);
             var y = GRID_HEIGHT;
-            for (var x = 0; x < NUM_SCENES; x++) {
-                if (controlButtons.isUp(x, y)) {
-                    renderer.staticLight(x, y, "50" /* ColorPalette.Purple */);
-                }
-                else if (controlButtons.isCaptureMidi(x, y)) {
+            for (var x = DIRECTIONAL_BTN_COUNT; x < NUM_SCENES; x++) {
+                if (ControlButtons.isCaptureMidi(x, y)) {
                     renderer.staticLight(x, y, "07" /* ColorPalette.RedDarker */);
                 }
                 else {
@@ -689,27 +705,6 @@ var ContextArrange = {
             renderer.pulsingLight(8, 8, "5F" /* ColorPalette.HotPink */);
         }
     },
-};
-var paintGridTrackView = function (renderer) {
-    for (var row = 0; row < NUM_SCENES; row++) {
-        for (var col = 0; col < NUM_SCENES; col++) {
-            // Y needs to be inverted.
-            var y = 7 - col;
-            var x = row;
-            var queuedForStop = trackBankHandler.trackQueuedForStop[col];
-            var clip = trackBankHandler.clips[col][row];
-            var _a = trackBankHandler.colors[col], trackR = _a[0], trackG = _a[1], trackB = _a[2];
-            if (queuedForStop) {
-                renderer.pulsingLight(x, y, "04" /* ColorPalette.RedLighter */);
-            }
-            else if (clip.hasContent) {
-                setClipLight(x, y, clip, renderer);
-            }
-            else {
-                renderer.rgbLight(x, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
-            }
-        }
-    }
 };
 //
 // src/out/launchpad/contextMute.js
@@ -920,13 +915,12 @@ var ContextStopClip = {
         return false;
     },
     transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var triggerButton = lp.controlButtons().stopClip;
-        var shouldReturnToPrevious = triggerButton && !isGridButton && state == ButtonState.ToggledOn;
+        var shouldReturnToPrevious = ControlButtons.isStopClip(x, y) && state == ButtonState.ToggledOn;
         if (shouldReturnToPrevious) {
             return lp.lastContext();
         }
         if (state == ButtonState.ToggledOn && isGridButton) {
-            getClipLauncherFromTrackGrid(y).stop();
+            getTrackFromGrid(y).stop();
             return this;
         }
         return contextDefaultTransition(lp, this);
@@ -935,6 +929,7 @@ var ContextStopClip = {
         paintGridTrackView(renderer);
         // Paint other colors
         {
+            paintNavigationButtons(renderer);
             paintTopRow(renderer);
             paintSideBar(renderer);
         }
@@ -944,16 +939,19 @@ var ContextStopClip = {
         }
     },
 };
+var DIRECTIONAL_BTN_COUNT = 4;
 var paintTopRow = function (renderer) {
     var y = GRID_HEIGHT;
-    for (var x = 0; x < NUM_SCENES; x++) {
+    for (var x = DIRECTIONAL_BTN_COUNT; x < NUM_SCENES; x++) {
         renderer.flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
     }
 };
 var paintSideBar = function (renderer) {
     var x = GRID_WIDTH;
     for (var y = 0; y < NUM_SCENES; y++) {
-        renderer.flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
+        ControlButtons.isStopClip(x, y)
+            ? renderer.staticLight(x, y, "57" /* ColorPalette.Green */)
+            : renderer.flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
     }
 };
 //

@@ -1,25 +1,3 @@
-const setClipLight = (
-  x: number,
-  y: number,
-  clip: Clip,
-  renderer: RenderQueue
-): void => {
-  if (clip.isRecordingQueued) {
-    renderer.pulsingLight(x, y, ColorPalette.RedLighter);
-  } else if (clip.isPlaybackQueued) {
-    renderer.pulsingLight(x, y, ColorPalette.GreenLighter);
-  } else if (clip.isStopQueued) {
-    renderer.pulsingLight(x, y, ColorPalette.Dirt);
-  } else if (clip.isRecording) {
-    renderer.flashingLight(x, y, ColorPalette.RedDarker, ColorPalette.Red);
-  } else if (clip.isPlaying) {
-    renderer.flashingLight(x, y, ColorPalette.GreenDarker, ColorPalette.Green);
-  } else {
-    const [clipR, clipG, clipB] = clip.color;
-    renderer.rgbLight(x, y, clipR, clipG, clipB);
-  }
-};
-
 const light = (
   x: number,
   y: number,

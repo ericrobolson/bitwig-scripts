@@ -18,10 +18,8 @@ const ContextArrange: Context = {
     const controlButtons = lp.controlButtons();
 
     if (state == ButtonState.ToggledOn && isGridButton) {
-      const clipLauncher = getClipLauncherFromTrackGrid(y);
-
-      // track.select();
-      // clipLauncher.select(x);
+      const track = getTrackFromGrid(y);
+      const clipLauncher = track.clipLauncherSlotBank();
 
       if (controlButtons.record) {
         clipLauncher.record(x);
@@ -29,6 +27,7 @@ const ContextArrange: Context = {
         // delete clip
         clipLauncher.getItemAt(x).deleteObject();
       } else {
+        clipLauncher.select(x);
         clipLauncher.launch(x);
       }
 
@@ -38,7 +37,6 @@ const ContextArrange: Context = {
     return null;
   },
   render(lp: LaunchpadObject, renderer: RenderQueue) {
-    const controlButtons = lp.controlButtons();
     paintGridTrackView(renderer);
 
     // Paint side bar
@@ -62,11 +60,11 @@ const ContextArrange: Context = {
 
     // Paint top
     {
+      paintNavigationButtons(renderer);
+
       const y = GRID_HEIGHT;
-      for (var x = 0; x < NUM_SCENES; x++) {
-        if (controlButtons.isUp(x, y)) {
-          renderer.staticLight(x, y, ColorPalette.Purple);
-        } else if (controlButtons.isCaptureMidi(x, y)) {
+      for (var x = DIRECTIONAL_BTN_COUNT; x < NUM_SCENES; x++) {
+        if (ControlButtons.isCaptureMidi(x, y)) {
           renderer.staticLight(x, y, ColorPalette.RedDarker);
         } else {
           renderer.staticLight(x, y, ColorPalette.Blue);
@@ -79,33 +77,4 @@ const ContextArrange: Context = {
       renderer.pulsingLight(8, 8, ColorPalette.HotPink);
     }
   },
-};
-
-const paintGridTrackView = (renderer: RenderQueue): void => {
-  for (var row = 0; row < NUM_SCENES; row++) {
-    for (var col = 0; col < NUM_SCENES; col++) {
-      // Y needs to be inverted.
-      const y = 7 - col;
-      const x = row;
-
-      const queuedForStop = trackBankHandler.trackQueuedForStop[col];
-
-      const clip = trackBankHandler.clips[col][row];
-      const [trackR, trackG, trackB] = trackBankHandler.colors[col];
-
-      if (queuedForStop) {
-        renderer.pulsingLight(x, y, ColorPalette.RedLighter);
-      } else if (clip.hasContent) {
-        setClipLight(x, y, clip, renderer);
-      } else {
-        renderer.rgbLight(
-          x,
-          y,
-          trackR * BACKGROUND_LIGHT_STRENGTH,
-          trackG * BACKGROUND_LIGHT_STRENGTH,
-          trackB * BACKGROUND_LIGHT_STRENGTH
-        );
-      }
-    }
-  }
 };

@@ -9,11 +9,13 @@
 - [x] Add context for record arm control.Tap once to go to record arm control state, tap again to go to default state.
 - [x] Add context for volume control. Tap once to go to volume control state, tap again to go to default state.
 - [x] Add context for pan control. Tap once to go to pan control state, tap again to go to default state.
+- [x] Fixed issue with lights not displaying real time
+- [ ] Standardize interfaces. Take the `contextArrange` and `contextStopClip` and move out the similiar parts and make it data driven. E.g. make the differences interfaces, then call those interfaces from a single unified render method. Follow UX of solid tertiary color nav buttons, pulsing primary color for a border and a solid contrasting color for the menu. Take stop clip as an example and use fun border color combinations for each track.
 - [ ] Add in setting of values for arm controls.
 - [ ] Add in displaying of values for arm controls. If a track is armed, use a high light intensity. Make it flash. If not armed, static low light.
 - [ ] When in volume context, show volume sliders colored by each track.
 - [ ] When in volume context, allow setting of volume level.
-
+- [ ] Maybe make swap, copy, and delete the note, custom and capture midi buttons? That would give you most sequencer needs you have.
 - [ ] Implement context for pan control
 - [ ] Implement context for mute control
 - [ ] Implement context for solo control

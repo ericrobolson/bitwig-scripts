@@ -15,16 +15,15 @@ const ContextStopClip: Context = {
     y: number,
     isGridButton: boolean
   ): Context {
-    const triggerButton = lp.controlButtons().stopClip;
     const shouldReturnToPrevious =
-      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
+      ControlButtons.isStopClip(x, y) && state == ButtonState.ToggledOn;
 
     if (shouldReturnToPrevious) {
       return lp.lastContext();
     }
 
     if (state == ButtonState.ToggledOn && isGridButton) {
-      getClipLauncherFromTrackGrid(y).stop();
+      getTrackFromGrid(y).stop();
 
       return this;
     }
@@ -36,6 +35,7 @@ const ContextStopClip: Context = {
 
     // Paint other colors
     {
+      paintNavigationButtons(renderer);
       paintTopRow(renderer);
       paintSideBar(renderer);
     }
@@ -47,9 +47,11 @@ const ContextStopClip: Context = {
   },
 };
 
+const DIRECTIONAL_BTN_COUNT = 4;
+
 const paintTopRow = (renderer: RenderQueue) => {
   const y = GRID_HEIGHT;
-  for (var x = 0; x < NUM_SCENES; x++) {
+  for (var x = DIRECTIONAL_BTN_COUNT; x < NUM_SCENES; x++) {
     renderer.flashingLight(x, y, ColorPalette.RedDarker, ColorPalette.Red);
   }
 };
@@ -57,6 +59,8 @@ const paintTopRow = (renderer: RenderQueue) => {
 const paintSideBar = (renderer: RenderQueue) => {
   const x = GRID_WIDTH;
   for (var y = 0; y < NUM_SCENES; y++) {
-    renderer.flashingLight(x, y, ColorPalette.RedDarker, ColorPalette.Red);
+    ControlButtons.isStopClip(x, y)
+      ? renderer.staticLight(x, y, ColorPalette.Green)
+      : renderer.flashingLight(x, y, ColorPalette.RedDarker, ColorPalette.Red);
   }
 };

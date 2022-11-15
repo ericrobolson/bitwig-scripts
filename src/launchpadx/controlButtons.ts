@@ -19,52 +19,52 @@ class ControlButtons {
   solo: boolean = false;
   recordArm: boolean = false;
 
-  isUp(x: number, y: number): boolean {
+  static isUp(x: number, y: number): boolean {
     return x == 0 && y == GRID_HEIGHT;
   }
-  isDown(x: number, y: number): boolean {
+  static isDown(x: number, y: number): boolean {
     return x == 1 && y == GRID_HEIGHT;
   }
-  isLeft(x: number, y: number): boolean {
+  static isLeft(x: number, y: number): boolean {
     return x == 2 && y == GRID_HEIGHT;
   }
-  isRight(x: number, y: number): boolean {
+  static isRight(x: number, y: number): boolean {
     return x == 3 && y == GRID_HEIGHT;
   }
-  isSession(x: number, y: number): boolean {
+  static isSession(x: number, y: number): boolean {
     return x == 4 && y == GRID_HEIGHT;
   }
-  isNote(x: number, y: number): boolean {
+  static isNote(x: number, y: number): boolean {
     return x == 5 && y == GRID_HEIGHT;
   }
-  isCustom(x: number, y: number): boolean {
+  static isCustom(x: number, y: number): boolean {
     return x == 6 && y == GRID_HEIGHT;
   }
-  isCaptureMidi(x: number, y: number): boolean {
+  static isCaptureMidi(x: number, y: number): boolean {
     return x == 7 && y == GRID_HEIGHT;
   }
-  isVolume(x: number, y: number): boolean {
+  static isVolume(x: number, y: number): boolean {
     return x == GRID_WIDTH && y == 7;
   }
-  isPan(x: number, y: number): boolean {
+  static isPan(x: number, y: number): boolean {
     return x == GRID_WIDTH && y == 6;
   }
-  isSendA(x: number, y: number): boolean {
+  static isSendA(x: number, y: number): boolean {
     return x == GRID_WIDTH && y == 5;
   }
-  isSendB(x: number, y: number): boolean {
+  static isSendB(x: number, y: number): boolean {
     return x == GRID_WIDTH && y == 4;
   }
-  isStopClip(x: number, y: number): boolean {
+  static isStopClip(x: number, y: number): boolean {
     return x == GRID_WIDTH && y == 3;
   }
-  isMute(x: number, y: number): boolean {
+  static isMute(x: number, y: number): boolean {
     return x == GRID_WIDTH && y == 2;
   }
-  isSolo(x: number, y: number): boolean {
+  static isSolo(x: number, y: number): boolean {
     return x == GRID_WIDTH && y == 1;
   }
-  isRecordArm(x: number, y: number): boolean {
+  static isRecordArm(x: number, y: number): boolean {
     return x == GRID_WIDTH && y == 0;
   }
 }
