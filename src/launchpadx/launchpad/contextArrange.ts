@@ -18,18 +18,13 @@ const ContextArrange: Context = {
     const controlButtons = lp.controlButtons();
 
     if (state == ButtonState.ToggledOn && isGridButton) {
-      const track = trackBankHandler.bank.getItemAt(7 - y);
-      const clipLauncher = track.clipLauncherSlotBank();
-
-      // Select things
+      const clipLauncher = getClipLauncherFromTrackGrid(y);
 
       // track.select();
       // clipLauncher.select(x);
 
       if (controlButtons.record) {
         clipLauncher.record(x);
-      } else if (controlButtons.stopClip) {
-        clipLauncher.stop();
       } else if (controlButtons.custom) {
         // delete clip
         clipLauncher.getItemAt(x).deleteObject();
@@ -44,36 +39,7 @@ const ContextArrange: Context = {
   },
   render(lp: LaunchpadObject, renderer: RenderQueue) {
     const controlButtons = lp.controlButtons();
-
-    // Paint grid
-    {
-      for (var row = 0; row < NUM_SCENES; row++) {
-        for (var col = 0; col < NUM_SCENES; col++) {
-          // Y needs to be inverted.
-          const y = 7 - col;
-          const x = row;
-
-          const queuedForStop = trackBankHandler.trackQueuedForStop[col];
-
-          const clip = trackBankHandler.clips[col][row];
-          const [trackR, trackG, trackB] = trackBankHandler.colors[col];
-
-          if (queuedForStop) {
-            renderer.pulsingLight(x, y, ColorPalette.RedLighter);
-          } else if (clip.hasContent) {
-            setClipLight(x, y, clip, renderer);
-          } else {
-            renderer.rgbLight(
-              x,
-              y,
-              trackR * BACKGROUND_LIGHT_STRENGTH,
-              trackG * BACKGROUND_LIGHT_STRENGTH,
-              trackB * BACKGROUND_LIGHT_STRENGTH
-            );
-          }
-        }
-      }
-    }
+    paintGridTrackView(renderer);
 
     // Paint side bar
     {
@@ -113,4 +79,33 @@ const ContextArrange: Context = {
       renderer.pulsingLight(8, 8, ColorPalette.HotPink);
     }
   },
+};
+
+const paintGridTrackView = (renderer: RenderQueue): void => {
+  for (var row = 0; row < NUM_SCENES; row++) {
+    for (var col = 0; col < NUM_SCENES; col++) {
+      // Y needs to be inverted.
+      const y = 7 - col;
+      const x = row;
+
+      const queuedForStop = trackBankHandler.trackQueuedForStop[col];
+
+      const clip = trackBankHandler.clips[col][row];
+      const [trackR, trackG, trackB] = trackBankHandler.colors[col];
+
+      if (queuedForStop) {
+        renderer.pulsingLight(x, y, ColorPalette.RedLighter);
+      } else if (clip.hasContent) {
+        setClipLight(x, y, clip, renderer);
+      } else {
+        renderer.rgbLight(
+          x,
+          y,
+          trackR * BACKGROUND_LIGHT_STRENGTH,
+          trackG * BACKGROUND_LIGHT_STRENGTH,
+          trackB * BACKGROUND_LIGHT_STRENGTH
+        );
+      }
+    }
+  }
 };

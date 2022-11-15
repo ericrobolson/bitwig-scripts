@@ -5,22 +5,20 @@
 
 # Current Roadmap
 
+- [x] Implement context for stop control
 - [x] Add context for record arm control.Tap once to go to record arm control state, tap again to go to default state.
 - [x] Add context for volume control. Tap once to go to volume control state, tap again to go to default state.
 - [x] Add context for pan control. Tap once to go to pan control state, tap again to go to default state.
-
+- [ ] Add in setting of values for arm controls.
 - [ ] Add in displaying of values for arm controls. If a track is armed, use a high light intensity. Make it flash. If not armed, static low light.
 - [ ] When in volume context, show volume sliders colored by each track.
-
-- [ ] Add in setting of values for arm controls.
 - [ ] When in volume context, allow setting of volume level.
 
-- [ ] Add context for pan control
-- [ ] Add context for stop control
-- [ ] Add context for mute control
-- [ ] Add context for solo control
-- [ ] Add context for Send A control
-- [ ] Add context for Send B control
+- [ ] Implement context for pan control
+- [ ] Implement context for mute control
+- [ ] Implement context for solo control
+- [ ] Implement context for Send A control
+- [ ] Implement context for Send B control
 
 - [ ] Update layouts depending on which mode you're in.
 - [ ] Add switching between mix, arrange, and edit modes

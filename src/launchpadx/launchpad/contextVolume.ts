@@ -15,9 +15,9 @@ const ContextVolume: Context = {
     y: number,
     isGridButton: boolean
   ): Context | null {
-    const controlButtons = lp.controlButtons();
+    const triggerButton = lp.controlButtons().volume;
     const shouldReturnToPrevious =
-      controlButtons.volume && !isGridButton && state == ButtonState.ToggledOn;
+      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
 
     if (shouldReturnToPrevious) {
       return lp.lastContext();

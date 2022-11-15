@@ -51,10 +51,20 @@ const contextDefaultTransition = (
   {
     if (controlButtons.volume) {
       return ContextVolume;
-    } else if (controlButtons.recordArm) {
-      return ContextRecordArm;
     } else if (controlButtons.pan) {
       return ContextPanControl;
+    } else if (controlButtons.sendA) {
+      return ContextSendA;
+    } else if (controlButtons.sendB) {
+      return ContextSendB;
+    } else if (controlButtons.stopClip) {
+      return ContextStopClip;
+    } else if (controlButtons.mute) {
+      return ContextMute;
+    } else if (controlButtons.solo) {
+      return ContextSolo;
+    } else if (controlButtons.recordArm) {
+      return ContextRecordArm;
     }
   }
 
@@ -74,4 +84,10 @@ const contextDefaultTransition = (
   }
 
   return context;
+};
+
+const getClipLauncherFromTrackGrid = (y: number): ClipLauncherSlotBank => {
+  const track = trackBankHandler.bank.getItemAt(7 - y);
+  const clipLauncher = track.clipLauncherSlotBank();
+  return clipLauncher;
 };

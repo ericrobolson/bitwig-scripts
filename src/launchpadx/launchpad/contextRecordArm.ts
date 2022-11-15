@@ -15,11 +15,9 @@ const ContextRecordArm: Context = {
     y: number,
     isGridButton: boolean
   ): Context {
-    const controlButtons = lp.controlButtons();
+    const triggerButton = lp.controlButtons().recordArm;
     const shouldReturnToPrevious =
-      controlButtons.recordArm &&
-      !isGridButton &&
-      state == ButtonState.ToggledOn;
+      triggerButton && !isGridButton && state == ButtonState.ToggledOn;
 
     if (shouldReturnToPrevious) {
       return lp.lastContext();

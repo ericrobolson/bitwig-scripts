@@ -1,6 +1,6 @@
-const ContextPanControl: Context = {
+const ContextSendA: Context = {
   title(): string {
-    return "ContextPanControl";
+    return "ContextSendA";
   },
   shouldReplaceHistory() {
     return false;
@@ -15,7 +15,7 @@ const ContextPanControl: Context = {
     y: number,
     isGridButton: boolean
   ): Context {
-    const triggerButton = lp.controlButtons().pan;
+    const triggerButton = lp.controlButtons().sendA;
     const shouldReturnToPrevious =
       triggerButton && !isGridButton && state == ButtonState.ToggledOn;
 
@@ -30,7 +30,7 @@ const ContextPanControl: Context = {
     {
       for (var row = 0; row < NUM_SCENES + 1; row++) {
         for (var col = 0; col < NUM_SCENES + 1; col++) {
-          renderer.staticLight(row, col, ColorPalette.BlueLighter);
+          renderer.staticLight(row, col, ColorPalette.Dirt);
         }
       }
     }
