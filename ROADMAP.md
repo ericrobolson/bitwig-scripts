@@ -15,15 +15,16 @@
 - [x] Add in setting of values for arm controls.
 - [x] Implement deletion context
 - [x] Add in displaying of values for arm controls. If a track is armed, use a high light intensity. Make it flash. If not armed, static low light.
-- [ ] Implement solo. Copy pasta arm track code.
-- [ ] Implement mute. Refactor solo + arm track code to share it and have consistent behavior.
+- [x] Implement solo. Copy pasta arm track code.
+- [x] Implement mute. Refactor solo + arm track code to share it and have consistent behavior.
+- [x] Implement context for solo control
+- [x] Implement context for mute control
+- [x] Refactor contexts to use builder functions.
 - [ ] Implement volume context.
 - [ ] When in volume context, show volume sliders colored by each track.
 - [ ] When in volume context, allow setting of volume level.
 - [ ] Maybe make swap, copy, and delete the note, custom and capture midi buttons? That would give you most sequencer needs you have.
 - [ ] Implement context for pan control
-- [ ] Implement context for mute control
-- [ ] Implement context for solo control
 - [ ] Implement context for Send A control
 - [ ] Implement context for Send B control
 - [ ] Solidify color scheme

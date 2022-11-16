@@ -16,6 +16,8 @@ class TrackHandler {
   public readonly bank: TrackBank;
   public readonly trackIsArmed: Array<boolean>;
   public readonly trackQueuedForStop: Array<boolean>;
+  public readonly trackIsSoloed: Array<boolean>;
+  public readonly trackIsMuted: Array<boolean>;
   public readonly cursor: CursorTrack;
   public readonly colors: Array<[number, number, number]>;
   public readonly clips: Array<Array<Clip>>;
@@ -32,7 +34,9 @@ class TrackHandler {
     this.colors = new Array(numTracks);
     this.clips = new Array(numTracks);
     this.trackQueuedForStop = new Array(numTracks);
+    this.trackIsMuted = new Array(numTracks);
     this.trackIsArmed = new Array(numTracks);
+    this.trackIsSoloed = new Array(numTracks);
 
     this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
     this.cursor = host.createCursorTrack(id, name, 0, 0, true);
@@ -63,6 +67,18 @@ class TrackHandler {
         element.markInterested();
         element.addValueObserver((isArmed) => {
           this.trackIsArmed[idx] = isArmed;
+        });
+
+        element = track.solo();
+        element.markInterested();
+        element.addValueObserver((isSoloed) => {
+          this.trackIsSoloed[idx] = isSoloed;
+        });
+
+        element = track.mute();
+        element.markInterested();
+        element.addValueObserver((isMuted) => {
+          this.trackIsMuted[idx] = isMuted;
         });
       }
 

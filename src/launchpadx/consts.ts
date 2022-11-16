@@ -33,12 +33,18 @@ const enum ColorPalette {
   White,
   Dirt,
   Yellow,
+  YellowLighter,
+  YellowDarker,
 }
 
 const getHexFromColorPalette = (c: ColorPalette): string => {
   switch (c) {
     case ColorPalette.Yellow:
-      return "74";
+      return "62";
+    case ColorPalette.YellowLighter:
+      return "6E";
+    case ColorPalette.YellowDarker:
+      return "7E";
     case ColorPalette.HotPink:
       return "5F";
     case ColorPalette.White:

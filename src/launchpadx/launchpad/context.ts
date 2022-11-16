@@ -77,9 +77,9 @@ const contextDefaultTransition = (
     } else if (controlButtons.stopClip) {
       return ContextStopClip;
     } else if (controlButtons.mute) {
-      //  return ContextMute;
+      return ContextMute;
     } else if (controlButtons.solo) {
-      // return ContextSolo;
+      return ContextSolo;
     } else if (controlButtons.recordArm) {
       return ContextRecordArm;
     }
@@ -105,6 +105,27 @@ const contextDefaultTransition = (
 
 const getTrackFromGrid = (y: number): Track => {
   return trackBankHandler.bank.getItemAt(7 - y);
+};
+
+/**
+ * Draws a grid and replaces some cells with information.
+ */
+const drawTrackGridWithInformationColumns = (
+  renderer: RenderQueue,
+  row: number,
+  col: number,
+  isOn: (row: number, col: number) => boolean,
+  color: ColorPalette
+) => {
+  // Y needs to be inverted.
+  const y = 7 - col;
+  const x = row;
+  const shouldDrawRecordArmed = x > 5 || x < 2;
+  if (isOn(row, col) && shouldDrawRecordArmed) {
+    renderer.flashingLight(x, y, ColorPalette.White, color);
+  } else {
+    paintTrackViewCell(renderer, row, col);
+  }
 };
 
 const paintTrackViewCell = (
@@ -228,6 +249,10 @@ const paintColoredContext = (context: Context, renderer: RenderQueue) => {
 
   // Paint logo
   {
-    renderer.pulsingLight(GRID_WIDTH, GRID_HEIGHT, ColorPalette.RedLighter);
+    renderer.pulsingLight(
+      GRID_WIDTH,
+      GRID_HEIGHT,
+      context.renderInstructions.targetButton
+    );
   }
 };

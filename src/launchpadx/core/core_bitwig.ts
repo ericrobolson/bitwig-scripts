@@ -222,6 +222,9 @@ interface SettableBool {
 
 interface Track {
   arm(): SettableBool;
+  solo(): SettableBool;
+  mute(): SettableBool;
+
   stop(): void;
 
   isQueuedForStop(): Subscribable<boolean>;
