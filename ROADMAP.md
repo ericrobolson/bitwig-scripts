@@ -20,14 +20,18 @@
 - [x] Implement context for solo control
 - [x] Implement context for mute control
 - [x] Refactor contexts to use builder functions.
-- [ ] Implement volume context.
-- [ ] When in volume context, show volume sliders colored by each track.
-- [ ] When in volume context, allow setting of volume level.
-- [ ] Maybe make swap, copy, and delete the note, custom and capture midi buttons? That would give you most sequencer needs you have.
+- [x] Implement volume context. (make value slider control)
+- [x] When in volume context, show volume sliders colored by each track.
+- [ ] When in volume context, add setting of volume level.
 - [ ] Implement context for pan control
+- [ ] Implement display for pan control
+- [ ] Implement setting for pan control
+- [ ] Maybe make swap, copy, and delete the note, custom and capture midi buttons? That would give you most sequencer needs you have.
 - [ ] Implement context for Send A control
 - [ ] Implement context for Send B control
 - [ ] Solidify color scheme
+- [ ] Merge to master
+- [ ] Hide anywhere where you do `y = 7 - col` and abstract it with a function.
 
 - [ ] Update layouts depending on which mode you're in.
 - [ ] Add switching between mix, arrange, and edit modes

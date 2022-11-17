@@ -17,10 +17,17 @@ class TrackHandler {
   public readonly trackIsArmed: Array<boolean>;
   public readonly trackQueuedForStop: Array<boolean>;
   public readonly trackIsSoloed: Array<boolean>;
+  private readonly trackVolumeNormalized: Array<number>;
+  private readonly trackPanNormalized: Array<number>;
   public readonly trackIsMuted: Array<boolean>;
   public readonly cursor: CursorTrack;
   public readonly colors: Array<[number, number, number]>;
   public readonly clips: Array<Array<Clip>>;
+
+  getTrackVolumeNormalized(y: number): number {
+    const col = 7 - y;
+    return this.trackVolumeNormalized[col];
+  }
 
   constructor(
     host: Host,
@@ -37,6 +44,8 @@ class TrackHandler {
     this.trackIsMuted = new Array(numTracks);
     this.trackIsArmed = new Array(numTracks);
     this.trackIsSoloed = new Array(numTracks);
+    this.trackPanNormalized = new Array(numTracks);
+    this.trackVolumeNormalized = new Array(numTracks);
 
     this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
     this.cursor = host.createCursorTrack(id, name, 0, 0, true);
@@ -57,11 +66,16 @@ class TrackHandler {
       {
         element = track.pan();
         element.markInterested();
-        element.setIndication(true);
+
+        element.value().addValueObserver((pan) => {
+          this.trackPanNormalized[idx] = pan;
+        });
 
         element = track.volume();
         element.markInterested();
-        element.setIndication(true);
+        element.value().addValueObserver((volume) => {
+          this.trackVolumeNormalized[idx] = volume;
+        });
 
         element = track.arm();
         element.markInterested();

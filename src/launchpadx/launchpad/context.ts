@@ -6,7 +6,7 @@ type RenderInstructions = {
   gridOverride: null | DrawGrid;
 };
 
-type DrawGrid = (renderer: RenderQueue, x: number, y: number) => void;
+type DrawGrid = (renderer: RenderQueue, row: number, col: number) => void;
 
 interface Context {
   /**
@@ -67,7 +67,7 @@ const contextDefaultTransition = (
     } else if (controlButtons.custom) {
       return ContextCustom;
     } else if (controlButtons.volume) {
-      //  return ContextVolume;
+      return ContextVolume;
     } else if (controlButtons.pan) {
       //  return ContextPanControl;
     } else if (controlButtons.sendA) {

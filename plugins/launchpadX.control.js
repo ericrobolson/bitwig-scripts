@@ -82,6 +82,8 @@ var TrackHandler = /** @class */ (function () {
         this.trackIsMuted = new Array(numTracks);
         this.trackIsArmed = new Array(numTracks);
         this.trackIsSoloed = new Array(numTracks);
+        this.trackPanNormalized = new Array(numTracks);
+        this.trackVolumeNormalized = new Array(numTracks);
         this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
         this.cursor = host.createCursorTrack(id, name, 0, 0, true);
         var bankSize = this.bank.getSizeOfBank();
@@ -98,10 +100,14 @@ var TrackHandler = /** @class */ (function () {
             {
                 element = track.pan();
                 element.markInterested();
-                element.setIndication(true);
+                element.value().addValueObserver(function (pan) {
+                    _this.trackPanNormalized[idx] = pan;
+                });
                 element = track.volume();
                 element.markInterested();
-                element.setIndication(true);
+                element.value().addValueObserver(function (volume) {
+                    _this.trackVolumeNormalized[idx] = volume;
+                });
                 element = track.arm();
                 element.markInterested();
                 element.addValueObserver(function (isArmed) {
@@ -175,6 +181,10 @@ var TrackHandler = /** @class */ (function () {
         this.cursor.mute().markInterested();
         this.bank.sceneBank().setIndication(showIndications);
     }
+    TrackHandler.prototype.getTrackVolumeNormalized = function (y) {
+        var col = 7 - y;
+        return this.trackVolumeNormalized[col];
+    };
     return TrackHandler;
 }());
 //
@@ -421,7 +431,6 @@ var LaunchpadRenderer = /** @class */ (function () {
     LaunchpadRenderer.prototype.present = function () {
         if (this.isDirty) {
             var sysex = "F0 00 20 29 02 0C 03 ".concat(this.queuedLights, " f7");
-            println(this.queuedLights);
             sendSysex(sysex);
             this.clearQueue();
         }
@@ -510,6 +519,8 @@ var TrackHandler = /** @class */ (function () {
         this.trackIsMuted = new Array(numTracks);
         this.trackIsArmed = new Array(numTracks);
         this.trackIsSoloed = new Array(numTracks);
+        this.trackPanNormalized = new Array(numTracks);
+        this.trackVolumeNormalized = new Array(numTracks);
         this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
         this.cursor = host.createCursorTrack(id, name, 0, 0, true);
         var bankSize = this.bank.getSizeOfBank();
@@ -526,10 +537,14 @@ var TrackHandler = /** @class */ (function () {
             {
                 element = track.pan();
                 element.markInterested();
-                element.setIndication(true);
+                element.value().addValueObserver(function (pan) {
+                    _this.trackPanNormalized[idx] = pan;
+                });
                 element = track.volume();
                 element.markInterested();
-                element.setIndication(true);
+                element.value().addValueObserver(function (volume) {
+                    _this.trackVolumeNormalized[idx] = volume;
+                });
                 element = track.arm();
                 element.markInterested();
                 element.addValueObserver(function (isArmed) {
@@ -603,6 +618,10 @@ var TrackHandler = /** @class */ (function () {
         this.cursor.mute().markInterested();
         this.bank.sceneBank().setIndication(showIndications);
     }
+    TrackHandler.prototype.getTrackVolumeNormalized = function (y) {
+        var col = 7 - y;
+        return this.trackVolumeNormalized[col];
+    };
     return TrackHandler;
 }());
 //
@@ -643,7 +662,7 @@ var contextDefaultTransition = function (lp, context) {
             return ContextCustom;
         }
         else if (controlButtons.volume) {
-            //  return ContextVolume;
+            return ContextVolume;
         }
         else if (controlButtons.pan) {
             //  return ContextPanControl;
@@ -914,6 +933,58 @@ var ContextArrange = contextCellAction("ContextArrange", ControlButtons.isSessio
         clipLauncher.launch(x);
     }
 }, 12 /* ColorPalette.Blue */, 9 /* ColorPalette.Green */, 3 /* ColorPalette.Orange */, true);
+//
+// src/out/launchpad/contextNormalizedRange.js
+//
+var contextNormalizedRange = function (title, isTargetButton, action, contextButtonColor, otherButtonsColor, navigationButtonsColor) {
+    return {
+        title: function () {
+            return title;
+        },
+        shouldReplaceHistory: function () {
+            return false;
+        },
+        isTargetButton: isTargetButton,
+        transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
+            var shouldReturnToPrevious = this.isTargetButton(x, y) && state == ButtonState.ToggledOn;
+            if (shouldReturnToPrevious) {
+                return lp.lastContext();
+            }
+            if (state == ButtonState.ToggledOn && isGridButton) {
+                //  action(lp, x, y);
+                println("TODO: need to figure out actions");
+                return this;
+            }
+            return contextDefaultTransition(lp, this);
+        },
+        renderInstructions: {
+            targetButton: contextButtonColor,
+            navigationButtons: navigationButtonsColor,
+            otherButtons: otherButtonsColor,
+            grid: 2 /* ColorPalette.DefaultTrackBehavior */,
+            gridOverride: function (renderer, row, col) {
+                // Y needs to be inverted.
+                var y = 7 - col;
+                var x = row;
+                var clip = trackBankHandler.clips[col][row];
+                var volume = trackBankHandler.getTrackVolumeNormalized(y);
+                var volumeToGrid = volume * GRID_WIDTH;
+                var rem = volumeToGrid % 1;
+                var gridSquare = volumeToGrid - rem;
+                var isGridSquare = x < gridSquare;
+                var strength = isGridSquare ? 1.0 : 0.01;
+                var _a = trackBankHandler.colors[col], trackR = _a[0], trackG = _a[1], trackB = _a[2];
+                if (x == gridSquare) {
+                    renderer.rgbLight(x, y, trackR * rem, trackG * rem, trackB * rem);
+                }
+                else {
+                    renderer.rgbLight(x, y, trackR * strength, trackG * strength, trackB * strength);
+                }
+            },
+        },
+    };
+};
+var ContextVolume = contextNormalizedRange("ContextVolume", ControlButtons.isVolume, function (_lp, _x, y) { return getTrackFromGrid(y).stop(); }, 9 /* ColorPalette.Green */, 6 /* ColorPalette.Red */, 12 /* ColorPalette.Blue */);
 //
 // src/out/launchpad/launchpadx.js
 //
