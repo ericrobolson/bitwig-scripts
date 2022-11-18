@@ -22,10 +22,10 @@
 - [x] Refactor contexts to use builder functions.
 - [x] Implement volume context. (make value slider control)
 - [x] When in volume context, show volume sliders colored by each track.
-- [ ] When in volume context, add setting of volume level.
-- [ ] Implement context for pan control
-- [ ] Implement display for pan control
-- [ ] Implement setting for pan control
+- [x] When in volume context, add setting of volume level.
+- [x] Implement context for pan control
+- [x] Implement display for pan control
+- [x] Implement setting for pan control
 - [ ] Maybe make swap, copy, and delete the note, custom and capture midi buttons? That would give you most sequencer needs you have.
 - [ ] Implement context for Send A control
 - [ ] Implement context for Send B control

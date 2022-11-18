@@ -66,7 +66,8 @@ const contextCellAction = (
 const ContextStopClip: Context = contextCellAction(
   "ContextStopClip",
   ControlButtons.isStopClip,
-  (_lp: LaunchpadObject, _x: number, y: number) => getTrackFromGrid(y).stop(),
+  (_lp: LaunchpadObject, _x: number, y: number) =>
+    trackBankHandler.getTrackFromGrid(y).stop(),
   ColorPalette.Green,
   ColorPalette.Red,
   ColorPalette.Blue
@@ -76,7 +77,7 @@ const ContextCustom: Context = contextCellAction(
   "ContextCustom/Delete",
   ControlButtons.isCustom,
   (_lp: LaunchpadObject, x: number, y: number) => {
-    const track = getTrackFromGrid(y);
+    const track = trackBankHandler.getTrackFromGrid(y);
     const clipLauncher = track.clipLauncherSlotBank();
 
     clipLauncher.getItemAt(x).deleteObject();
@@ -90,7 +91,7 @@ const ContextArrange: Context = contextCellAction(
   "ContextArrange",
   ControlButtons.isSession,
   (lp: LaunchpadObject, x: number, y: number) => {
-    const track = getTrackFromGrid(y);
+    const track = trackBankHandler.getTrackFromGrid(y);
     const clipLauncher = track.clipLauncherSlotBank();
     const controlButtons = lp.controlButtons();
 

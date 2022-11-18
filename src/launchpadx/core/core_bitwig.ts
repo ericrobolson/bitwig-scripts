@@ -221,6 +221,7 @@ interface SettableBool {
 }
 interface SettableNumber {
   set(value: number): void;
+  setImmediately(value: number): void;
   addValueObserver: (callback: (value: number) => void) => void;
 }
 interface NumberValue {

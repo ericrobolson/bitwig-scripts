@@ -10,3 +10,16 @@ const index2dTo1d = (
 ): number => {
   return (y % height) * width + (x % width);
 };
+
+const mapRange = (
+  value: number,
+  sourceMin: number,
+  sourceMax: number,
+  destMin: number,
+  destMax: number
+): number => {
+  return (
+    ((value - sourceMin) * (destMax - destMin)) / (sourceMax - sourceMin) +
+    destMin
+  );
+};

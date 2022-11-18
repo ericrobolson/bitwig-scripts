@@ -24,9 +24,36 @@ class TrackHandler {
   public readonly colors: Array<[number, number, number]>;
   public readonly clips: Array<Array<Clip>>;
 
+  private yToCol(y: number): number {
+    return 7 - y;
+  }
+
+  getTrackPanNormalized(y: number): number {
+    return this.trackPanNormalized[this.yToCol(y)];
+  }
+
+  /**
+   * Sets the pan of a track.
+   * @param y
+   * @param normalizedPan A value from 0..1
+   */
+  setTrackPanNormalized(y: number, normalizedPan: number) {
+    this.getTrackFromGrid(y).pan().value().setImmediately(normalizedPan);
+  }
   getTrackVolumeNormalized(y: number): number {
-    const col = 7 - y;
-    return this.trackVolumeNormalized[col];
+    return this.trackVolumeNormalized[this.yToCol(y)];
+  }
+  /**
+   * Sets the volume of a track.
+   * @param y
+   * @param normalizedVolume A value from 0..1
+   */
+  setTrackVolumeNormalized(y: number, normalizedVolume: number) {
+    this.getTrackFromGrid(y).volume().value().setImmediately(normalizedVolume);
+  }
+
+  getTrackFromGrid(y: number): Track {
+    return this.bank.getItemAt(7 - y);
   }
 
   constructor(

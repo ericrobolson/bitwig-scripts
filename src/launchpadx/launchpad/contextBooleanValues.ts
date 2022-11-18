@@ -73,7 +73,7 @@ const ContextSolo = trackBooleanValueContext(
   "ContextSolo",
   ControlButtons.isSolo,
   (x: number, y: number) => {
-    getTrackFromGrid(y).solo().toggle();
+    trackBankHandler.getTrackFromGrid(y).solo().toggle();
   },
   (row: number, col: number) => {
     return trackBankHandler.trackIsSoloed[col];
@@ -87,7 +87,7 @@ const ContextMute = trackBooleanValueContext(
   "ContextMute",
   ControlButtons.isMute,
   (x: number, y: number) => {
-    getTrackFromGrid(y).mute().toggle();
+    trackBankHandler.getTrackFromGrid(y).mute().toggle();
   },
   (row: number, col: number) => {
     return trackBankHandler.trackIsMuted[col];
@@ -101,7 +101,7 @@ const ContextRecordArm = trackBooleanValueContext(
   "ContextRecordArm",
   ControlButtons.isRecordArm,
   (x: number, y: number) => {
-    getTrackFromGrid(y).arm().toggle();
+    trackBankHandler.getTrackFromGrid(y).arm().toggle();
   },
   (row: number, col: number) => {
     return trackBankHandler.trackIsArmed[col];

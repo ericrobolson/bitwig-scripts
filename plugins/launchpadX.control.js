@@ -181,9 +181,33 @@ var TrackHandler = /** @class */ (function () {
         this.cursor.mute().markInterested();
         this.bank.sceneBank().setIndication(showIndications);
     }
+    TrackHandler.prototype.yToCol = function (y) {
+        return 7 - y;
+    };
+    TrackHandler.prototype.getTrackPanNormalized = function (y) {
+        return this.trackPanNormalized[this.yToCol(y)];
+    };
+    /**
+     * Sets the pan of a track.
+     * @param y
+     * @param normalizedPan A value from 0..1
+     */
+    TrackHandler.prototype.setTrackPanNormalized = function (y, normalizedPan) {
+        this.getTrackFromGrid(y).pan().value().setImmediately(normalizedPan);
+    };
     TrackHandler.prototype.getTrackVolumeNormalized = function (y) {
-        var col = 7 - y;
-        return this.trackVolumeNormalized[col];
+        return this.trackVolumeNormalized[this.yToCol(y)];
+    };
+    /**
+     * Sets the volume of a track.
+     * @param y
+     * @param normalizedVolume A value from 0..1
+     */
+    TrackHandler.prototype.setTrackVolumeNormalized = function (y, normalizedVolume) {
+        this.getTrackFromGrid(y).volume().value().setImmediately(normalizedVolume);
+    };
+    TrackHandler.prototype.getTrackFromGrid = function (y) {
+        return this.bank.getItemAt(7 - y);
     };
     return TrackHandler;
 }());
@@ -204,6 +228,10 @@ var index1dTo2d = function (index, width) {
 };
 var index2dTo1d = function (x, y, width, height) {
     return (y % height) * width + (x % width);
+};
+var mapRange = function (value, sourceMin, sourceMax, destMin, destMax) {
+    return (((value - sourceMin) * (destMax - destMin)) / (sourceMax - sourceMin) +
+        destMin);
 };
 //
 // src/out/consts.js
@@ -618,9 +646,33 @@ var TrackHandler = /** @class */ (function () {
         this.cursor.mute().markInterested();
         this.bank.sceneBank().setIndication(showIndications);
     }
+    TrackHandler.prototype.yToCol = function (y) {
+        return 7 - y;
+    };
+    TrackHandler.prototype.getTrackPanNormalized = function (y) {
+        return this.trackPanNormalized[this.yToCol(y)];
+    };
+    /**
+     * Sets the pan of a track.
+     * @param y
+     * @param normalizedPan A value from 0..1
+     */
+    TrackHandler.prototype.setTrackPanNormalized = function (y, normalizedPan) {
+        this.getTrackFromGrid(y).pan().value().setImmediately(normalizedPan);
+    };
     TrackHandler.prototype.getTrackVolumeNormalized = function (y) {
-        var col = 7 - y;
-        return this.trackVolumeNormalized[col];
+        return this.trackVolumeNormalized[this.yToCol(y)];
+    };
+    /**
+     * Sets the volume of a track.
+     * @param y
+     * @param normalizedVolume A value from 0..1
+     */
+    TrackHandler.prototype.setTrackVolumeNormalized = function (y, normalizedVolume) {
+        this.getTrackFromGrid(y).volume().value().setImmediately(normalizedVolume);
+    };
+    TrackHandler.prototype.getTrackFromGrid = function (y) {
+        return this.bank.getItemAt(7 - y);
     };
     return TrackHandler;
 }());
@@ -641,6 +693,10 @@ var index1dTo2d = function (index, width) {
 };
 var index2dTo1d = function (x, y, width, height) {
     return (y % height) * width + (x % width);
+};
+var mapRange = function (value, sourceMin, sourceMax, destMin, destMax) {
+    return (((value - sourceMin) * (destMax - destMin)) / (sourceMax - sourceMin) +
+        destMin);
 };
 //
 // src/out/launchpad/context.js
@@ -665,7 +721,7 @@ var contextDefaultTransition = function (lp, context) {
             return ContextVolume;
         }
         else if (controlButtons.pan) {
-            //  return ContextPanControl;
+            return ContextPan;
         }
         else if (controlButtons.sendA) {
             //   return ContextSendA;
@@ -702,9 +758,6 @@ var contextDefaultTransition = function (lp, context) {
         }
     }
     return context;
-};
-var getTrackFromGrid = function (y) {
-    return trackBankHandler.bank.getItemAt(7 - y);
 };
 /**
  * Draws a grid and replaces some cells with information.
@@ -855,17 +908,17 @@ var trackBooleanValueContext = function (title, isTargetButton, toggleAction, tr
     };
 };
 var ContextSolo = trackBooleanValueContext("ContextSolo", ControlButtons.isSolo, function (x, y) {
-    getTrackFromGrid(y).solo().toggle();
+    trackBankHandler.getTrackFromGrid(y).solo().toggle();
 }, function (row, col) {
     return trackBankHandler.trackIsSoloed[col];
 }, 20 /* ColorPalette.YellowDarker */, 5 /* ColorPalette.Purple */, 13 /* ColorPalette.BlueLighter */);
 var ContextMute = trackBooleanValueContext("ContextMute", ControlButtons.isMute, function (x, y) {
-    getTrackFromGrid(y).mute().toggle();
+    trackBankHandler.getTrackFromGrid(y).mute().toggle();
 }, function (row, col) {
     return trackBankHandler.trackIsMuted[col];
 }, 3 /* ColorPalette.Orange */, 13 /* ColorPalette.BlueLighter */, 5 /* ColorPalette.Purple */);
 var ContextRecordArm = trackBooleanValueContext("ContextRecordArm", ControlButtons.isRecordArm, function (x, y) {
-    getTrackFromGrid(y).arm().toggle();
+    trackBankHandler.getTrackFromGrid(y).arm().toggle();
 }, function (row, col) {
     return trackBankHandler.trackIsArmed[col];
 }, 6 /* ColorPalette.Red */, 10 /* ColorPalette.GreenLighter */, 12 /* ColorPalette.Blue */);
@@ -915,14 +968,16 @@ var contextCellAction = function (title, isTargetButton, action, contextButtonCo
         },
     };
 };
-var ContextStopClip = contextCellAction("ContextStopClip", ControlButtons.isStopClip, function (_lp, _x, y) { return getTrackFromGrid(y).stop(); }, 9 /* ColorPalette.Green */, 6 /* ColorPalette.Red */, 12 /* ColorPalette.Blue */);
+var ContextStopClip = contextCellAction("ContextStopClip", ControlButtons.isStopClip, function (_lp, _x, y) {
+    return trackBankHandler.getTrackFromGrid(y).stop();
+}, 9 /* ColorPalette.Green */, 6 /* ColorPalette.Red */, 12 /* ColorPalette.Blue */);
 var ContextCustom = contextCellAction("ContextCustom/Delete", ControlButtons.isCustom, function (_lp, x, y) {
-    var track = getTrackFromGrid(y);
+    var track = trackBankHandler.getTrackFromGrid(y);
     var clipLauncher = track.clipLauncherSlotBank();
     clipLauncher.getItemAt(x).deleteObject();
 }, 6 /* ColorPalette.Red */, 11 /* ColorPalette.GreenDarker */, 12 /* ColorPalette.Blue */);
 var ContextArrange = contextCellAction("ContextArrange", ControlButtons.isSession, function (lp, x, y) {
-    var track = getTrackFromGrid(y);
+    var track = trackBankHandler.getTrackFromGrid(y);
     var clipLauncher = track.clipLauncherSlotBank();
     var controlButtons = lp.controlButtons();
     if (controlButtons.record) {
@@ -936,7 +991,9 @@ var ContextArrange = contextCellAction("ContextArrange", ControlButtons.isSessio
 //
 // src/out/launchpad/contextNormalizedRange.js
 //
-var contextNormalizedRange = function (title, isTargetButton, action, contextButtonColor, otherButtonsColor, navigationButtonsColor) {
+var GRID_HALF_VALUE_LOWER = 3;
+var GRID_HALF_VALUE_HIGHER = 4;
+var contextNormalizedRange = function (title, isTargetButton, targetDisplayValue, setTargetValue, contextButtonColor, otherButtonsColor, navigationButtonsColor, normalizeAtCenter) {
     return {
         title: function () {
             return title;
@@ -950,9 +1007,17 @@ var contextNormalizedRange = function (title, isTargetButton, action, contextBut
             if (shouldReturnToPrevious) {
                 return lp.lastContext();
             }
-            if (state == ButtonState.ToggledOn && isGridButton) {
-                //  action(lp, x, y);
-                println("TODO: need to figure out actions");
+            if ((state == ButtonState.On || state == ButtonState.ToggledOn) &&
+                isGridButton) {
+                var value = 0;
+                if (lp.gridButtons().isOn(GRID_HALF_VALUE_LOWER, y) &&
+                    lp.gridButtons().isOn(GRID_HALF_VALUE_HIGHER, y)) {
+                    value = 0.5;
+                }
+                else {
+                    value = mapRange(x, 0, 7, 0, 1);
+                }
+                setTargetValue(y, value);
                 return this;
             }
             return contextDefaultTransition(lp, this);
@@ -966,16 +1031,27 @@ var contextNormalizedRange = function (title, isTargetButton, action, contextBut
                 // Y needs to be inverted.
                 var y = 7 - col;
                 var x = row;
-                var clip = trackBankHandler.clips[col][row];
-                var volume = trackBankHandler.getTrackVolumeNormalized(y);
-                var volumeToGrid = volume * GRID_WIDTH;
-                var rem = volumeToGrid % 1;
-                var gridSquare = volumeToGrid - rem;
+                var value = targetDisplayValue(y);
+                var valueToGrid = value * GRID_WIDTH;
+                var rem = valueToGrid % 1;
+                var gridSquare = valueToGrid - rem;
                 var isGridSquare = x < gridSquare;
-                var strength = isGridSquare ? 1.0 : 0.01;
+                var strength = isGridSquare ? 1.0 : 0.05;
+                if (normalizeAtCenter) {
+                    if ((x >= gridSquare && x < GRID_HALF_VALUE_HIGHER) ||
+                        (x <= gridSquare && x > GRID_HALF_VALUE_LOWER)) {
+                        strength = 1.0;
+                    }
+                    else {
+                        strength = 0.05;
+                    }
+                }
                 var _a = trackBankHandler.colors[col], trackR = _a[0], trackG = _a[1], trackB = _a[2];
-                if (x == gridSquare) {
-                    renderer.rgbLight(x, y, trackR * rem, trackG * rem, trackB * rem);
+                if ((value == 0.5 &&
+                    (x == GRID_HALF_VALUE_LOWER || x == GRID_HALF_VALUE_HIGHER)) ||
+                    (value == 1 && x == 7) ||
+                    x == gridSquare) {
+                    renderer.pulsingLight(x, y, 16 /* ColorPalette.White */);
                 }
                 else {
                     renderer.rgbLight(x, y, trackR * strength, trackG * strength, trackB * strength);
@@ -984,7 +1060,16 @@ var contextNormalizedRange = function (title, isTargetButton, action, contextBut
         },
     };
 };
-var ContextVolume = contextNormalizedRange("ContextVolume", ControlButtons.isVolume, function (_lp, _x, y) { return getTrackFromGrid(y).stop(); }, 9 /* ColorPalette.Green */, 6 /* ColorPalette.Red */, 12 /* ColorPalette.Blue */);
+var ContextVolume = contextNormalizedRange("ContextVolume", ControlButtons.isVolume, function (y) {
+    return trackBankHandler.getTrackVolumeNormalized(y);
+}, function (y, normalizedVolume) {
+    return trackBankHandler.setTrackVolumeNormalized(y, normalizedVolume);
+}, 9 /* ColorPalette.Green */, 6 /* ColorPalette.Red */, 12 /* ColorPalette.Blue */, false);
+var ContextPan = contextNormalizedRange("ContextPan", ControlButtons.isPan, function (y) {
+    return trackBankHandler.getTrackPanNormalized(y);
+}, function (y, normalizedPan) {
+    return trackBankHandler.setTrackPanNormalized(y, normalizedPan);
+}, 15 /* ColorPalette.HotPink */, 10 /* ColorPalette.GreenLighter */, 13 /* ColorPalette.BlueLighter */, true);
 //
 // src/out/launchpad/launchpadx.js
 //
@@ -1063,7 +1148,7 @@ var LaunchpadObject = /** @class */ (function () {
         this.contextPrevious = null;
         this.context = ContextArrange;
         this.renderer = new LaunchpadRenderer(GRID_WIDTH, GRID_HEIGHT);
-        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+        this.gridButtonState = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
         this.prevVelocities = new Array(NUM_NOTES);
         this.noteVelocities = new Array(NUM_NOTES);
         for (var i = 0; i < NUM_NOTES; i++) {
@@ -1076,7 +1161,7 @@ var LaunchpadObject = /** @class */ (function () {
             this.previousLights[i] = "";
         }
         this.controlButtonState = new ControlButtons();
-        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+        this.gridButtonState = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
     }
     /**
      * Returns the panel layout for the DAW.
@@ -1090,6 +1175,13 @@ var LaunchpadObject = /** @class */ (function () {
      */
     LaunchpadObject.prototype.controlButtons = function () {
         return this.controlButtonState;
+    };
+    /**
+     *
+     * @returns
+     */
+    LaunchpadObject.prototype.gridButtons = function () {
+        return this.gridButtonState;
     };
     /**
      * Returns the last context page.
@@ -1115,7 +1207,7 @@ var LaunchpadObject = /** @class */ (function () {
         var isOn = velocity > 0;
         var isGridButton = x < GRID_WIDTH && y < GRID_HEIGHT;
         if (isGridButton) {
-            this.gridButtons.set(x, y, isOn);
+            this.gridButtonState.set(x, y, isOn);
         }
         else {
             this.maybeSetControlButtons(x, y, isOn);

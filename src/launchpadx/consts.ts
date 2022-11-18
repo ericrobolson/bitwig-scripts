@@ -94,6 +94,9 @@ const NUM_SCENES = 8;
 const GRID_WIDTH: number = 8;
 const GRID_HEIGHT: number = 8;
 
+const GRID_HALF_VALUE_LOWER = 3;
+const GRID_HALF_VALUE_HIGHER = 4;
+
 const DIRECTIONAL_BTN_COUNT = 4;
 
 const NUM_NOTES = 128;

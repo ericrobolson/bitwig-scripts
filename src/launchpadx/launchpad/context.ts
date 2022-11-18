@@ -69,7 +69,7 @@ const contextDefaultTransition = (
     } else if (controlButtons.volume) {
       return ContextVolume;
     } else if (controlButtons.pan) {
-      //  return ContextPanControl;
+      return ContextPan;
     } else if (controlButtons.sendA) {
       //   return ContextSendA;
     } else if (controlButtons.sendB) {
@@ -101,10 +101,6 @@ const contextDefaultTransition = (
   }
 
   return context;
-};
-
-const getTrackFromGrid = (y: number): Track => {
-  return trackBankHandler.bank.getItemAt(7 - y);
 };
 
 /**

@@ -1,10 +1,12 @@
 const contextNormalizedRange = (
   title: string,
   isTargetButton: (x: number, y: number) => boolean,
-  action: (lp: LaunchpadObject, x: number, y: number) => void,
+  targetDisplayValue: (y: number) => number,
+  setTargetValue: (y: number, normalizedValue: number) => void,
   contextButtonColor: ColorPalette,
   otherButtonsColor: ColorPalette,
-  navigationButtonsColor: ColorPalette
+  navigationButtonsColor: ColorPalette,
+  normalizeAtCenter: boolean
 ): Context => {
   return {
     title(): string {
@@ -31,10 +33,21 @@ const contextNormalizedRange = (
         return lp.lastContext();
       }
 
-      if (state == ButtonState.ToggledOn && isGridButton) {
-        //  action(lp, x, y);
-        println("TODO: need to figure out actions");
+      if (
+        (state == ButtonState.On || state == ButtonState.ToggledOn) &&
+        isGridButton
+      ) {
+        let value = 0;
+        if (
+          lp.gridButtons().isOn(GRID_HALF_VALUE_LOWER, y) &&
+          lp.gridButtons().isOn(GRID_HALF_VALUE_HIGHER, y)
+        ) {
+          value = 0.5;
+        } else {
+          value = mapRange(x, 0, 7, 0, 1);
+        }
 
+        setTargetValue(y, value);
         return this;
       }
 
@@ -50,18 +63,33 @@ const contextNormalizedRange = (
         const y = 7 - col;
         const x = row;
 
-        const volume = trackBankHandler.getTrackVolumeNormalized(y);
-
-        const volumeToGrid = volume * GRID_WIDTH;
-        const rem = volumeToGrid % 1;
-        const gridSquare = volumeToGrid - rem;
+        const value = targetDisplayValue(y);
+        const valueToGrid = value * GRID_WIDTH;
+        const rem = valueToGrid % 1;
+        const gridSquare = valueToGrid - rem;
         const isGridSquare = x < gridSquare;
 
-        const strength = isGridSquare ? 1.0 : 0.01;
+        var strength = isGridSquare ? 1.0 : 0.05;
+        if (normalizeAtCenter) {
+          if (
+            (x >= gridSquare && x < GRID_HALF_VALUE_HIGHER) ||
+            (x <= gridSquare && x > GRID_HALF_VALUE_LOWER)
+          ) {
+            strength = 1.0;
+          } else {
+            strength = 0.05;
+          }
+        }
+
         const [trackR, trackG, trackB] = trackBankHandler.colors[col];
 
-        if (x == gridSquare) {
-          renderer.rgbLight(x, y, trackR * rem, trackG * rem, trackB * rem);
+        if (
+          (value == 0.5 &&
+            (x == GRID_HALF_VALUE_LOWER || x == GRID_HALF_VALUE_HIGHER)) ||
+          (value == 1 && x == 7) ||
+          x == gridSquare
+        ) {
+          renderer.pulsingLight(x, y, ColorPalette.White);
         } else {
           renderer.rgbLight(
             x,
@@ -79,8 +107,27 @@ const contextNormalizedRange = (
 const ContextVolume: Context = contextNormalizedRange(
   "ContextVolume",
   ControlButtons.isVolume,
-  (_lp: LaunchpadObject, _x: number, y: number) => getTrackFromGrid(y).stop(),
+  (y: number) => {
+    return trackBankHandler.getTrackVolumeNormalized(y);
+  },
+  (y: number, normalizedVolume: number) =>
+    trackBankHandler.setTrackVolumeNormalized(y, normalizedVolume),
   ColorPalette.Green,
   ColorPalette.Red,
-  ColorPalette.Blue
+  ColorPalette.Blue,
+  false
+);
+
+const ContextPan: Context = contextNormalizedRange(
+  "ContextPan",
+  ControlButtons.isPan,
+  (y: number) => {
+    return trackBankHandler.getTrackPanNormalized(y);
+  },
+  (y: number, normalizedPan: number) =>
+    trackBankHandler.setTrackPanNormalized(y, normalizedPan),
+  ColorPalette.HotPink,
+  ColorPalette.GreenLighter,
+  ColorPalette.BlueLighter,
+  true
 );
