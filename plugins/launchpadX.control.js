@@ -79,6 +79,11 @@ var TrackHandler = /** @class */ (function () {
         this.colors = new Array(numTracks);
         this.clips = new Array(numTracks);
         this.trackQueuedForStop = new Array(numTracks);
+        this.trackIsMuted = new Array(numTracks);
+        this.trackIsArmed = new Array(numTracks);
+        this.trackIsSoloed = new Array(numTracks);
+        this.trackPanNormalized = new Array(numTracks);
+        this.trackVolumeNormalized = new Array(numTracks);
         this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
         this.cursor = host.createCursorTrack(id, name, 0, 0, true);
         var bankSize = this.bank.getSizeOfBank();
@@ -95,10 +100,29 @@ var TrackHandler = /** @class */ (function () {
             {
                 element = track.pan();
                 element.markInterested();
-                element.setIndication(true);
+                element.value().addValueObserver(function (pan) {
+                    _this.trackPanNormalized[idx] = pan;
+                });
                 element = track.volume();
                 element.markInterested();
-                element.setIndication(true);
+                element.value().addValueObserver(function (volume) {
+                    _this.trackVolumeNormalized[idx] = volume;
+                });
+                element = track.arm();
+                element.markInterested();
+                element.addValueObserver(function (isArmed) {
+                    _this.trackIsArmed[idx] = isArmed;
+                });
+                element = track.solo();
+                element.markInterested();
+                element.addValueObserver(function (isSoloed) {
+                    _this.trackIsSoloed[idx] = isSoloed;
+                });
+                element = track.mute();
+                element.markInterested();
+                element.addValueObserver(function (isMuted) {
+                    _this.trackIsMuted[idx] = isMuted;
+                });
             }
             // Clip data
             {
@@ -157,6 +181,34 @@ var TrackHandler = /** @class */ (function () {
         this.cursor.mute().markInterested();
         this.bank.sceneBank().setIndication(showIndications);
     }
+    TrackHandler.prototype.yToCol = function (y) {
+        return 7 - y;
+    };
+    TrackHandler.prototype.getTrackPanNormalized = function (y) {
+        return this.trackPanNormalized[this.yToCol(y)];
+    };
+    /**
+     * Sets the pan of a track.
+     * @param y
+     * @param normalizedPan A value from 0..1
+     */
+    TrackHandler.prototype.setTrackPanNormalized = function (y, normalizedPan) {
+        this.getTrackFromGrid(y).pan().value().setImmediately(normalizedPan);
+    };
+    TrackHandler.prototype.getTrackVolumeNormalized = function (y) {
+        return this.trackVolumeNormalized[this.yToCol(y)];
+    };
+    /**
+     * Sets the volume of a track.
+     * @param y
+     * @param normalizedVolume A value from 0..1
+     */
+    TrackHandler.prototype.setTrackVolumeNormalized = function (y, normalizedVolume) {
+        this.getTrackFromGrid(y).volume().value().setImmediately(normalizedVolume);
+    };
+    TrackHandler.prototype.getTrackFromGrid = function (y) {
+        return this.bank.getItemAt(7 - y);
+    };
     return TrackHandler;
 }());
 //
@@ -177,6 +229,10 @@ var index1dTo2d = function (index, width) {
 var index2dTo1d = function (x, y, width, height) {
     return (y % height) * width + (x % width);
 };
+var mapRange = function (value, sourceMin, sourceMax, destMin, destMax) {
+    return (((value - sourceMin) * (destMax - destMin)) / (sourceMax - sourceMin) +
+        destMin);
+};
 //
 // src/out/consts.js
 //
@@ -187,11 +243,54 @@ var ButtonState;
     ButtonState[ButtonState["On"] = 2] = "On";
     ButtonState[ButtonState["Off"] = 3] = "Off";
 })(ButtonState || (ButtonState = {}));
+var getHexFromColorPalette = function (c) {
+    switch (c) {
+        case 18 /* ColorPalette.Yellow */:
+            return "62";
+        case 19 /* ColorPalette.YellowLighter */:
+            return "6E";
+        case 20 /* ColorPalette.YellowDarker */:
+            return "7E";
+        case 15 /* ColorPalette.HotPink */:
+            return "5F";
+        case 16 /* ColorPalette.White */:
+            return "77";
+        case 17 /* ColorPalette.Dirt */:
+            return "47";
+        case 12 /* ColorPalette.Blue */:
+            return "4F";
+        case 13 /* ColorPalette.BlueLighter */:
+            return "25";
+        case 14 /* ColorPalette.BlueDarker */:
+            return "27";
+        case 9 /* ColorPalette.Green */:
+            return "57";
+        case 10 /* ColorPalette.GreenLighter */:
+            return "19";
+        case 11 /* ColorPalette.GreenDarker */:
+            return "17";
+        case 6 /* ColorPalette.Red */:
+            return "05";
+        case 8 /* ColorPalette.RedDarker */:
+            return "07";
+        case 7 /* ColorPalette.RedLighter */:
+            return "04";
+        case 3 /* ColorPalette.Orange */:
+            return "54";
+        case 5 /* ColorPalette.Purple */:
+            return "37";
+        case 4 /* ColorPalette.Off */:
+        default:
+            println("Got unmapped color ".concat(c));
+            return "00";
+    }
+};
 var NUM_TRACKS = 8;
 var NUM_SENDS = 8;
 var NUM_SCENES = 8;
 var GRID_WIDTH = 8;
 var GRID_HEIGHT = 8;
+var DIRECTIONAL_BTN_COUNT = 4;
 var NUM_NOTES = 128;
 var BACKGROUND_LIGHT_STRENGTH = 0.1;
 //
@@ -303,13 +402,13 @@ var rgbLight = function (x, y, r, g, b) {
     return light(x, y, "03" /* LightType.RGB */, color);
 };
 var flashingLight = function (x, y, colorA, colorB) {
-    return light(x, y, "01" /* LightType.Flashing */, "".concat(colorA, " ").concat(colorB));
+    return light(x, y, "01" /* LightType.Flashing */, "".concat(getHexFromColorPalette(colorA), " ").concat(getHexFromColorPalette(colorB)));
 };
 var staticLight = function (x, y, color) {
-    return light(x, y, "00" /* LightType.Static */, color);
+    return light(x, y, "00" /* LightType.Static */, getHexFromColorPalette(color));
 };
 var pulsingLight = function (x, y, color) {
-    return light(x, y, "02" /* LightType.Pulsing */, color);
+    return light(x, y, "02" /* LightType.Pulsing */, getHexFromColorPalette(color));
 };
 //
 // src/out/renderer.js
@@ -318,6 +417,8 @@ var LaunchpadRenderer = /** @class */ (function () {
     function LaunchpadRenderer(width, height) {
         this.queuedLights = "";
         this.isDirty = false;
+        this.currentCount = 0;
+        this.MAX_LIGHTS = 81;
         var capacity = width * height;
         this.width = width;
         this.height = height;
@@ -342,11 +443,14 @@ var LaunchpadRenderer = /** @class */ (function () {
      * @param sysexMsg
      */
     LaunchpadRenderer.prototype.setLight = function (x, y, sysexMsg) {
-        var index = index2dTo1d(x, y, this.width, this.height);
-        if (this.previousLights[index] !== sysexMsg) {
-            this.previousLights[index] = sysexMsg;
-            this.queuedLights += sysexMsg;
-            this.isDirty = true;
+        if (this.currentCount < this.MAX_LIGHTS) {
+            var index = index2dTo1d(x, y, this.width, this.height);
+            if (this.previousLights[index] !== sysexMsg) {
+                this.previousLights[index] = sysexMsg;
+                this.queuedLights += sysexMsg;
+                this.isDirty = true;
+                this.currentCount += 1;
+            }
         }
     };
     /**
@@ -364,6 +468,7 @@ var LaunchpadRenderer = /** @class */ (function () {
      */
     LaunchpadRenderer.prototype.clearQueue = function () {
         this.isDirty = false;
+        this.currentCount = 0;
         this.queuedLights = "";
     };
     return LaunchpadRenderer;
@@ -439,6 +544,11 @@ var TrackHandler = /** @class */ (function () {
         this.colors = new Array(numTracks);
         this.clips = new Array(numTracks);
         this.trackQueuedForStop = new Array(numTracks);
+        this.trackIsMuted = new Array(numTracks);
+        this.trackIsArmed = new Array(numTracks);
+        this.trackIsSoloed = new Array(numTracks);
+        this.trackPanNormalized = new Array(numTracks);
+        this.trackVolumeNormalized = new Array(numTracks);
         this.bank = host.createMainTrackBank(numTracks, numSends, numScenes);
         this.cursor = host.createCursorTrack(id, name, 0, 0, true);
         var bankSize = this.bank.getSizeOfBank();
@@ -455,10 +565,29 @@ var TrackHandler = /** @class */ (function () {
             {
                 element = track.pan();
                 element.markInterested();
-                element.setIndication(true);
+                element.value().addValueObserver(function (pan) {
+                    _this.trackPanNormalized[idx] = pan;
+                });
                 element = track.volume();
                 element.markInterested();
-                element.setIndication(true);
+                element.value().addValueObserver(function (volume) {
+                    _this.trackVolumeNormalized[idx] = volume;
+                });
+                element = track.arm();
+                element.markInterested();
+                element.addValueObserver(function (isArmed) {
+                    _this.trackIsArmed[idx] = isArmed;
+                });
+                element = track.solo();
+                element.markInterested();
+                element.addValueObserver(function (isSoloed) {
+                    _this.trackIsSoloed[idx] = isSoloed;
+                });
+                element = track.mute();
+                element.markInterested();
+                element.addValueObserver(function (isMuted) {
+                    _this.trackIsMuted[idx] = isMuted;
+                });
             }
             // Clip data
             {
@@ -517,6 +646,34 @@ var TrackHandler = /** @class */ (function () {
         this.cursor.mute().markInterested();
         this.bank.sceneBank().setIndication(showIndications);
     }
+    TrackHandler.prototype.yToCol = function (y) {
+        return 7 - y;
+    };
+    TrackHandler.prototype.getTrackPanNormalized = function (y) {
+        return this.trackPanNormalized[this.yToCol(y)];
+    };
+    /**
+     * Sets the pan of a track.
+     * @param y
+     * @param normalizedPan A value from 0..1
+     */
+    TrackHandler.prototype.setTrackPanNormalized = function (y, normalizedPan) {
+        this.getTrackFromGrid(y).pan().value().setImmediately(normalizedPan);
+    };
+    TrackHandler.prototype.getTrackVolumeNormalized = function (y) {
+        return this.trackVolumeNormalized[this.yToCol(y)];
+    };
+    /**
+     * Sets the volume of a track.
+     * @param y
+     * @param normalizedVolume A value from 0..1
+     */
+    TrackHandler.prototype.setTrackVolumeNormalized = function (y, normalizedVolume) {
+        this.getTrackFromGrid(y).volume().value().setImmediately(normalizedVolume);
+    };
+    TrackHandler.prototype.getTrackFromGrid = function (y) {
+        return this.bank.getItemAt(7 - y);
+    };
     return TrackHandler;
 }());
 //
@@ -537,6 +694,10 @@ var index1dTo2d = function (index, width) {
 var index2dTo1d = function (x, y, width, height) {
     return (y % height) * width + (x % width);
 };
+var mapRange = function (value, sourceMin, sourceMax, destMin, destMax) {
+    return (((value - sourceMin) * (destMax - destMin)) / (sourceMax - sourceMin) +
+        destMin);
+};
 //
 // src/out/launchpad/context.js
 //
@@ -553,17 +714,20 @@ var contextDefaultTransition = function (lp, context) {
         if (controlButtons.session) {
             return ContextArrange;
         }
+        else if (controlButtons.custom) {
+            return ContextCustom;
+        }
         else if (controlButtons.volume) {
             return ContextVolume;
         }
         else if (controlButtons.pan) {
-            return ContextPanControl;
+            return ContextPan;
         }
         else if (controlButtons.sendA) {
-            return ContextSendA;
+            //   return ContextSendA;
         }
         else if (controlButtons.sendB) {
-            return ContextSendB;
+            //   return ContextSendB;
         }
         else if (controlButtons.stopClip) {
             return ContextStopClip;
@@ -595,398 +759,317 @@ var contextDefaultTransition = function (lp, context) {
     }
     return context;
 };
-var getTrackFromGrid = function (y) {
-    return trackBankHandler.bank.getItemAt(7 - y);
+/**
+ * Draws a grid and replaces some cells with information.
+ */
+var drawTrackGridWithInformationColumns = function (renderer, row, col, isOn, color) {
+    // Y needs to be inverted.
+    var y = 7 - col;
+    var x = row;
+    var shouldDrawRecordArmed = x > 5 || x < 2;
+    if (isOn(row, col) && shouldDrawRecordArmed) {
+        renderer.flashingLight(x, y, 16 /* ColorPalette.White */, color);
+    }
+    else {
+        paintTrackViewCell(renderer, row, col);
+    }
 };
-var paintNavigationButtons = function (renderer) {
-    for (var x = 0; x < DIRECTIONAL_BTN_COUNT; x++) {
-        renderer.staticLight(x, GRID_HEIGHT, "4F" /* ColorPalette.Blue */);
+var paintTrackViewCell = function (renderer, row, col) {
+    // Y needs to be inverted.
+    var y = 7 - col;
+    var x = row;
+    var clip = trackBankHandler.clips[col][row];
+    var queuedForStop = trackBankHandler.trackQueuedForStop[col] || clip.isStopQueued;
+    if (clip.isPlaybackQueued) {
+        renderer.pulsingLight(x, y, 10 /* ColorPalette.GreenLighter */);
+    }
+    else if (queuedForStop) {
+        renderer.pulsingLight(x, y, 7 /* ColorPalette.RedLighter */);
+    }
+    else if (clip.isRecordingQueued) {
+        renderer.pulsingLight(x, y, 7 /* ColorPalette.RedLighter */);
+    }
+    else if (clip.isRecording) {
+        renderer.flashingLight(x, y, 8 /* ColorPalette.RedDarker */, 6 /* ColorPalette.Red */);
+    }
+    else if (clip.isPlaying) {
+        renderer.flashingLight(x, y, 11 /* ColorPalette.GreenDarker */, 10 /* ColorPalette.GreenLighter */);
+    }
+    else if (clip.hasContent) {
+        var _a = clip.color, clipR = _a[0], clipG = _a[1], clipB = _a[2];
+        renderer.rgbLight(x, y, clipR, clipG, clipB);
+    }
+    else {
+        var _b = trackBankHandler.colors[col], trackR = _b[0], trackG = _b[1], trackB = _b[2];
+        renderer.rgbLight(x, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
     }
 };
 var paintGridTrackView = function (renderer) {
     for (var row = 0; row < NUM_SCENES; row++) {
         for (var col = 0; col < NUM_SCENES; col++) {
+            paintTrackViewCell(renderer, row, col);
+        }
+    }
+};
+var paintFlashingGrid = function (renderer, a, b) {
+    for (var row = 0; row < NUM_SCENES; row++) {
+        for (var col = 0; col < NUM_SCENES; col++) {
             // Y needs to be inverted.
             var y = 7 - col;
             var x = row;
-            var clip = trackBankHandler.clips[col][row];
-            var queuedForStop = trackBankHandler.trackQueuedForStop[col] || clip.isStopQueued;
-            if (clip.isPlaybackQueued) {
-                renderer.pulsingLight(x, y, "14" /* ColorPalette.GreenLighter */);
-            }
-            else if (queuedForStop) {
-                renderer.pulsingLight(x, y, "04" /* ColorPalette.RedLighter */);
-            }
-            else if (clip.isRecordingQueued) {
-                renderer.pulsingLight(x, y, "04" /* ColorPalette.RedLighter */);
-            }
-            else if (clip.isRecording) {
-                renderer.flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
-            }
-            else if (clip.isPlaying) {
-                renderer.flashingLight(x, y, "7B" /* ColorPalette.GreenDarker */, "57" /* ColorPalette.Green */);
-            }
-            else if (clip.hasContent) {
-                var _a = clip.color, clipR = _a[0], clipG = _a[1], clipB = _a[2];
-                renderer.rgbLight(x, y, clipR, clipG, clipB);
-            }
-            else {
-                var _b = trackBankHandler.colors[col], trackR = _b[0], trackG = _b[1], trackB = _b[2];
-                renderer.rgbLight(x, y, trackR * BACKGROUND_LIGHT_STRENGTH, trackG * BACKGROUND_LIGHT_STRENGTH, trackB * BACKGROUND_LIGHT_STRENGTH);
-            }
+            renderer.flashingLight(x, y, a, b);
         }
     }
 };
-//
-// src/out/launchpad/contextArrange.js
-//
-var ContextArrange = {
-    title: function () {
-        return "ContextArrange";
-    },
-    shouldReplaceHistory: function () {
-        return true;
-    },
-    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var controlButtons = lp.controlButtons();
-        if (state == ButtonState.ToggledOn && isGridButton) {
-            var track = getTrackFromGrid(y);
-            var clipLauncher = track.clipLauncherSlotBank();
-            if (controlButtons.record) {
-                clipLauncher.record(x);
-            }
-            else if (controlButtons.custom) {
-                // delete clip
-                clipLauncher.getItemAt(x).deleteObject();
-            }
-            else {
-                clipLauncher.select(x);
-                clipLauncher.launch(x);
-            }
-            return this;
-        }
-        return null;
-    },
-    render: function (lp, renderer) {
-        paintGridTrackView(renderer);
-        // Paint side bar
-        {
-            var x_1 = GRID_WIDTH;
+var paintColoredContext = function (context, renderer) {
+    if (context.renderInstructions.gridOverride !== null) {
+        for (var row = 0; row < NUM_SCENES; row++) {
             for (var col = 0; col < NUM_SCENES; col++) {
-                var y = col;
-                var _a = trackBankHandler.colors[7 - y], r = _a[0], g = _a[1], b = _a[2];
-                var isHeld = false;
-                if (isHeld) {
-                    renderer.staticLight(x_1, y, "50" /* ColorPalette.Purple */);
-                }
-                else if (r === 0 && g === 0 && b === 0) {
-                    renderer.staticLight(x_1, y, "77" /* ColorPalette.White */);
-                }
-                else {
-                    renderer.rgbLight(x_1, y, r, g, b);
-                }
+                context.renderInstructions.gridOverride(renderer, row, col);
             }
         }
-        // Paint top
-        {
-            paintNavigationButtons(renderer);
-            var y = GRID_HEIGHT;
-            for (var x = DIRECTIONAL_BTN_COUNT; x < NUM_SCENES; x++) {
-                if (ControlButtons.isCaptureMidi(x, y)) {
-                    renderer.staticLight(x, y, "07" /* ColorPalette.RedDarker */);
-                }
-                else {
-                    renderer.staticLight(x, y, "4F" /* ColorPalette.Blue */);
-                }
-            }
-        }
-        // Paint logo
-        {
-            renderer.pulsingLight(8, 8, "5F" /* ColorPalette.HotPink */);
-        }
-    },
-};
-//
-// src/out/launchpad/contextMute.js
-//
-var ContextMute = {
-    title: function () {
-        return "ContextMute";
-    },
-    shouldReplaceHistory: function () {
-        return false;
-    },
-    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var triggerButton = lp.controlButtons().mute;
-        var shouldReturnToPrevious = triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-        if (shouldReturnToPrevious) {
-            return lp.lastContext();
-        }
-        return contextDefaultTransition(lp, this);
-    },
-    render: function (lp, renderer) {
-        // Paint grid
-        {
-            for (var row = 0; row < NUM_SCENES + 1; row++) {
-                for (var col = 0; col < NUM_SCENES + 1; col++) {
-                    renderer.staticLight(row, col, "4F" /* ColorPalette.Blue */);
-                }
-            }
-        }
-        // Paint logo
-        {
-            renderer.pulsingLight(8, 8, "27" /* ColorPalette.BlueDarker */);
-        }
-    },
-};
-//
-// src/out/launchpad/contextPanControl.js
-//
-var ContextPanControl = {
-    title: function () {
-        return "ContextPanControl";
-    },
-    shouldReplaceHistory: function () {
-        return false;
-    },
-    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var triggerButton = lp.controlButtons().pan;
-        var shouldReturnToPrevious = triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-        if (shouldReturnToPrevious) {
-            return lp.lastContext();
-        }
-        return contextDefaultTransition(lp, this);
-    },
-    render: function (lp, renderer) {
-        // Paint grid
-        {
-            for (var row = 0; row < NUM_SCENES + 1; row++) {
-                for (var col = 0; col < NUM_SCENES + 1; col++) {
-                    renderer.staticLight(row, col, "25" /* ColorPalette.BlueLighter */);
-                }
-            }
-        }
-        // Paint logo
-        {
-            renderer.pulsingLight(8, 8, "27" /* ColorPalette.BlueDarker */);
-        }
-    },
-};
-//
-// src/out/launchpad/contextRecordArm.js
-//
-var ContextRecordArm = {
-    title: function () {
-        return "ContextRecordArm";
-    },
-    shouldReplaceHistory: function () {
-        return false;
-    },
-    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var triggerButton = lp.controlButtons().recordArm;
-        var shouldReturnToPrevious = triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-        if (shouldReturnToPrevious) {
-            return lp.lastContext();
-        }
-        return contextDefaultTransition(lp, this);
-    },
-    render: function (lp, renderer) {
-        // Paint grid
-        {
-            for (var row = 0; row < NUM_SCENES + 1; row++) {
-                for (var col = 0; col < NUM_SCENES + 1; col++) {
-                    renderer.staticLight(row, col, "07" /* ColorPalette.RedDarker */);
-                }
-            }
-        }
-        // Paint logo
-        {
-            renderer.pulsingLight(8, 8, "27" /* ColorPalette.BlueDarker */);
-        }
-    },
-};
-//
-// src/out/launchpad/contextSendA.js
-//
-var ContextSendA = {
-    title: function () {
-        return "ContextSendA";
-    },
-    shouldReplaceHistory: function () {
-        return false;
-    },
-    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var triggerButton = lp.controlButtons().sendA;
-        var shouldReturnToPrevious = triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-        if (shouldReturnToPrevious) {
-            return lp.lastContext();
-        }
-        return contextDefaultTransition(lp, this);
-    },
-    render: function (lp, renderer) {
-        // Paint grid
-        {
-            for (var row = 0; row < NUM_SCENES + 1; row++) {
-                for (var col = 0; col < NUM_SCENES + 1; col++) {
-                    renderer.staticLight(row, col, "47" /* ColorPalette.Dirt */);
-                }
-            }
-        }
-        // Paint logo
-        {
-            renderer.pulsingLight(8, 8, "27" /* ColorPalette.BlueDarker */);
-        }
-    },
-};
-//
-// src/out/launchpad/contextSendB.js
-//
-var ContextSendB = {
-    title: function () {
-        return "ContextSendB";
-    },
-    shouldReplaceHistory: function () {
-        return false;
-    },
-    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var triggerButton = lp.controlButtons().sendB;
-        var shouldReturnToPrevious = triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-        if (shouldReturnToPrevious) {
-            return lp.lastContext();
-        }
-        return contextDefaultTransition(lp, this);
-    },
-    render: function (lp, renderer) {
-        // Paint grid
-        {
-            for (var row = 0; row < NUM_SCENES + 1; row++) {
-                for (var col = 0; col < NUM_SCENES + 1; col++) {
-                    renderer.staticLight(row, col, "57" /* ColorPalette.Green */);
-                }
-            }
-        }
-        // Paint logo
-        {
-            renderer.pulsingLight(8, 8, "27" /* ColorPalette.BlueDarker */);
-        }
-    },
-};
-//
-// src/out/launchpad/contextSolo.js
-//
-var ContextSolo = {
-    title: function () {
-        return "ContextSolo";
-    },
-    shouldReplaceHistory: function () {
-        return false;
-    },
-    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var triggerButton = lp.controlButtons().solo;
-        var shouldReturnToPrevious = triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-        if (shouldReturnToPrevious) {
-            return lp.lastContext();
-        }
-        return contextDefaultTransition(lp, this);
-    },
-    render: function (lp, renderer) {
-        // Paint grid
-        {
-            for (var row = 0; row < NUM_SCENES + 1; row++) {
-                for (var col = 0; col < NUM_SCENES + 1; col++) {
-                    renderer.staticLight(row, col, "14" /* ColorPalette.GreenLighter */);
-                }
-            }
-        }
-        // Paint logo
-        {
-            renderer.pulsingLight(8, 8, "27" /* ColorPalette.BlueDarker */);
-        }
-    },
-};
-//
-// src/out/launchpad/contextStopClip.js
-//
-var ContextStopClip = {
-    title: function () {
-        return "ContextStopClip";
-    },
-    shouldReplaceHistory: function () {
-        return false;
-    },
-    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var shouldReturnToPrevious = ControlButtons.isStopClip(x, y) && state == ButtonState.ToggledOn;
-        if (shouldReturnToPrevious) {
-            return lp.lastContext();
-        }
-        if (state == ButtonState.ToggledOn && isGridButton) {
-            getTrackFromGrid(y).stop();
-            return this;
-        }
-        return contextDefaultTransition(lp, this);
-    },
-    render: function (lp, renderer) {
+    }
+    else if (context.renderInstructions.grid === 2 /* ColorPalette.DefaultTrackBehavior */) {
         paintGridTrackView(renderer);
-        // Paint other colors
-        {
-            paintNavigationButtons(renderer);
-            paintTopRow(renderer);
-            paintSideBar(renderer);
-        }
-        // Paint logo
-        {
-            renderer.pulsingLight(GRID_WIDTH, GRID_HEIGHT, "04" /* ColorPalette.RedLighter */);
-        }
-    },
-};
-var DIRECTIONAL_BTN_COUNT = 4;
-var paintTopRow = function (renderer) {
-    var y = GRID_HEIGHT;
-    for (var x = DIRECTIONAL_BTN_COUNT; x < NUM_SCENES; x++) {
-        renderer.flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
     }
-};
-var paintSideBar = function (renderer) {
-    var x = GRID_WIDTH;
-    for (var y = 0; y < NUM_SCENES; y++) {
-        ControlButtons.isStopClip(x, y)
-            ? renderer.staticLight(x, y, "57" /* ColorPalette.Green */)
-            : renderer.flashingLight(x, y, "07" /* ColorPalette.RedDarker */, "48" /* ColorPalette.Red */);
+    else {
+        println("Need to figure out how I want to do alternate grid painting behavior. Defaulting to flashing pink and green.");
+        paintFlashingGrid(renderer, 13 /* ColorPalette.BlueLighter */, 10 /* ColorPalette.GreenLighter */);
+    }
+    // Navigation buttons are secondary
+    for (var x = 0; x < DIRECTIONAL_BTN_COUNT; x++) {
+        renderer.staticLight(x, GRID_HEIGHT, context.renderInstructions.navigationButtons);
+    }
+    // Paint other control buttons
+    {
+        var draw = function (x, y) {
+            return context.isTargetButton(x, y)
+                ? renderer.pulsingLight(x, y, context.renderInstructions.targetButton)
+                : renderer.staticLight(x, y, context.renderInstructions.otherButtons);
+        };
+        var x = 0;
+        var y = GRID_HEIGHT;
+        for (x = DIRECTIONAL_BTN_COUNT; x < NUM_SCENES; x++) {
+            draw(x, y);
+        }
+        x = GRID_WIDTH;
+        for (y = 0; y < NUM_SCENES; y++) {
+            draw(x, y);
+        }
+    }
+    // Paint logo
+    {
+        renderer.pulsingLight(GRID_WIDTH, GRID_HEIGHT, context.renderInstructions.targetButton);
     }
 };
 //
-// src/out/launchpad/contextVolume.js
+// src/out/launchpad/contextBooleanValues.js
 //
-var ContextVolume = {
-    title: function () {
-        return "ContextVolume";
-    },
-    shouldReplaceHistory: function () {
-        return false;
-    },
-    transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
-        var triggerButton = lp.controlButtons().volume;
-        var shouldReturnToPrevious = triggerButton && !isGridButton && state == ButtonState.ToggledOn;
-        if (shouldReturnToPrevious) {
-            return lp.lastContext();
-        }
-        return contextDefaultTransition(lp, this);
-    },
-    render: function (lp, renderer) {
-        // Paint grid
-        {
-            for (var row = 0; row < NUM_SCENES + 1; row++) {
-                for (var col = 0; col < NUM_SCENES + 1; col++) {
-                    renderer.staticLight(row, col, "5F" /* ColorPalette.HotPink */);
-                }
+/**
+ * Creates a context that renders and sets a track's boolean value. An example would be 'record arm' or 'solo'.
+ * @param title
+ * @param isTargetButton
+ * @param toggleAction
+ * @param trackValueIsActive
+ * @param contextButtonColor
+ * @returns
+ */
+var trackBooleanValueContext = function (title, isTargetButton, toggleAction, trackValueIsActive, contextButtonColor, otherButtonsColor, navigationButtonsColor) {
+    return {
+        title: function () {
+            return title;
+        },
+        shouldReplaceHistory: function () {
+            return false;
+        },
+        isTargetButton: isTargetButton,
+        transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
+            var shouldReturnToPrevious = this.isTargetButton(x, y) &&
+                !isGridButton &&
+                state == ButtonState.ToggledOn;
+            if (shouldReturnToPrevious) {
+                return lp.lastContext();
             }
-        }
-        // Paint logo
-        {
-            renderer.pulsingLight(8, 8, "27" /* ColorPalette.BlueDarker */);
-        }
-    },
+            if (state == ButtonState.ToggledOn && isGridButton) {
+                toggleAction(x, y);
+                return this;
+            }
+            return contextDefaultTransition(lp, this);
+        },
+        renderInstructions: {
+            targetButton: contextButtonColor,
+            navigationButtons: navigationButtonsColor,
+            otherButtons: otherButtonsColor,
+            grid: 2 /* ColorPalette.DefaultTrackBehavior */,
+            gridOverride: function (renderer, row, col) {
+                drawTrackGridWithInformationColumns(renderer, row, col, trackValueIsActive, contextButtonColor);
+            },
+        },
+    };
 };
+var ContextSolo = trackBooleanValueContext("ContextSolo", ControlButtons.isSolo, function (x, y) {
+    trackBankHandler.getTrackFromGrid(y).solo().toggle();
+}, function (row, col) {
+    return trackBankHandler.trackIsSoloed[col];
+}, 20 /* ColorPalette.YellowDarker */, 5 /* ColorPalette.Purple */, 13 /* ColorPalette.BlueLighter */);
+var ContextMute = trackBooleanValueContext("ContextMute", ControlButtons.isMute, function (x, y) {
+    trackBankHandler.getTrackFromGrid(y).mute().toggle();
+}, function (row, col) {
+    return trackBankHandler.trackIsMuted[col];
+}, 3 /* ColorPalette.Orange */, 13 /* ColorPalette.BlueLighter */, 5 /* ColorPalette.Purple */);
+var ContextRecordArm = trackBooleanValueContext("ContextRecordArm", ControlButtons.isRecordArm, function (x, y) {
+    trackBankHandler.getTrackFromGrid(y).arm().toggle();
+}, function (row, col) {
+    return trackBankHandler.trackIsArmed[col];
+}, 6 /* ColorPalette.Red */, 10 /* ColorPalette.GreenLighter */, 12 /* ColorPalette.Blue */);
+//
+// src/out/launchpad/contextCellAction.js
+//
+/**
+ * Generates a context that performs a single action on a cell. No other values are displayed.
+ * Examples are stop or delete.
+ * @param title
+ * @param isTargetButton
+ * @param toggleAction
+ * @param trackValueIsActive
+ * @param contextButtonColor
+ * @param otherButtonsColor
+ * @param navigationButtonsColor
+ * @param replaceHistory
+ * @returns
+ */
+var contextCellAction = function (title, isTargetButton, action, contextButtonColor, otherButtonsColor, navigationButtonsColor, replaceHistory) {
+    if (replaceHistory === void 0) { replaceHistory = false; }
+    return {
+        title: function () {
+            return title;
+        },
+        shouldReplaceHistory: function () {
+            return replaceHistory;
+        },
+        isTargetButton: isTargetButton,
+        transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
+            var shouldReturnToPrevious = this.isTargetButton(x, y) && state == ButtonState.ToggledOn;
+            if (shouldReturnToPrevious) {
+                return lp.lastContext();
+            }
+            if (state == ButtonState.ToggledOn && isGridButton) {
+                action(lp, x, y);
+                return this;
+            }
+            return contextDefaultTransition(lp, this);
+        },
+        renderInstructions: {
+            targetButton: contextButtonColor,
+            navigationButtons: navigationButtonsColor,
+            otherButtons: otherButtonsColor,
+            grid: 2 /* ColorPalette.DefaultTrackBehavior */,
+            gridOverride: null,
+        },
+    };
+};
+var ContextStopClip = contextCellAction("ContextStopClip", ControlButtons.isStopClip, function (_lp, _x, y) {
+    return trackBankHandler.getTrackFromGrid(y).stop();
+}, 9 /* ColorPalette.Green */, 6 /* ColorPalette.Red */, 12 /* ColorPalette.Blue */);
+var ContextCustom = contextCellAction("ContextCustom/Delete", ControlButtons.isCustom, function (_lp, x, y) {
+    var track = trackBankHandler.getTrackFromGrid(y);
+    var clipLauncher = track.clipLauncherSlotBank();
+    clipLauncher.getItemAt(x).deleteObject();
+}, 6 /* ColorPalette.Red */, 11 /* ColorPalette.GreenDarker */, 12 /* ColorPalette.Blue */);
+var ContextArrange = contextCellAction("ContextArrange", ControlButtons.isSession, function (lp, x, y) {
+    var track = trackBankHandler.getTrackFromGrid(y);
+    var clipLauncher = track.clipLauncherSlotBank();
+    var controlButtons = lp.controlButtons();
+    if (controlButtons.record) {
+        clipLauncher.record(x);
+    }
+    else {
+        clipLauncher.select(x);
+        clipLauncher.launch(x);
+    }
+}, 12 /* ColorPalette.Blue */, 9 /* ColorPalette.Green */, 3 /* ColorPalette.Orange */, true);
+//
+// src/out/launchpad/contextNormalizedRange.js
+//
+var GRID_HALF_VALUE_LOWER = 3;
+var GRID_HALF_VALUE_HIGHER = 4;
+var contextNormalizedRange = function (title, isTargetButton, targetDisplayValue, setTargetValue, contextButtonColor, otherButtonsColor, navigationButtonsColor, normalizeAtCenter) {
+    return {
+        title: function () {
+            return title;
+        },
+        shouldReplaceHistory: function () {
+            return false;
+        },
+        isTargetButton: isTargetButton,
+        transition: function (lp, note, velocity, prevVelocity, state, x, y, isGridButton) {
+            var shouldReturnToPrevious = this.isTargetButton(x, y) && state == ButtonState.ToggledOn;
+            if (shouldReturnToPrevious) {
+                return lp.lastContext();
+            }
+            if ((state == ButtonState.On || state == ButtonState.ToggledOn) &&
+                isGridButton) {
+                var value = 0;
+                if (lp.gridButtons().isOn(GRID_HALF_VALUE_LOWER, y) &&
+                    lp.gridButtons().isOn(GRID_HALF_VALUE_HIGHER, y)) {
+                    value = 0.5;
+                }
+                else {
+                    value = mapRange(x, 0, 7, 0, 1);
+                }
+                setTargetValue(y, value);
+                return this;
+            }
+            return contextDefaultTransition(lp, this);
+        },
+        renderInstructions: {
+            targetButton: contextButtonColor,
+            navigationButtons: navigationButtonsColor,
+            otherButtons: otherButtonsColor,
+            grid: 2 /* ColorPalette.DefaultTrackBehavior */,
+            gridOverride: function (renderer, row, col) {
+                // Y needs to be inverted.
+                var y = 7 - col;
+                var x = row;
+                var value = targetDisplayValue(y);
+                var valueToGrid = value * GRID_WIDTH;
+                var rem = valueToGrid % 1;
+                var gridSquare = valueToGrid - rem;
+                var isGridSquare = x < gridSquare;
+                var strength = isGridSquare ? 1.0 : 0.05;
+                if (normalizeAtCenter) {
+                    if ((x >= gridSquare && x < GRID_HALF_VALUE_HIGHER) ||
+                        (x <= gridSquare && x > GRID_HALF_VALUE_LOWER)) {
+                        strength = 1.0;
+                    }
+                    else {
+                        strength = 0.05;
+                    }
+                }
+                var _a = trackBankHandler.colors[col], trackR = _a[0], trackG = _a[1], trackB = _a[2];
+                if ((value == 0.5 &&
+                    (x == GRID_HALF_VALUE_LOWER || x == GRID_HALF_VALUE_HIGHER)) ||
+                    (value == 1 && x == 7) ||
+                    x == gridSquare) {
+                    renderer.pulsingLight(x, y, 16 /* ColorPalette.White */);
+                }
+                else {
+                    renderer.rgbLight(x, y, trackR * strength, trackG * strength, trackB * strength);
+                }
+            },
+        },
+    };
+};
+var ContextVolume = contextNormalizedRange("ContextVolume", ControlButtons.isVolume, function (y) {
+    return trackBankHandler.getTrackVolumeNormalized(y);
+}, function (y, normalizedVolume) {
+    return trackBankHandler.setTrackVolumeNormalized(y, normalizedVolume);
+}, 9 /* ColorPalette.Green */, 6 /* ColorPalette.Red */, 12 /* ColorPalette.Blue */, false);
+var ContextPan = contextNormalizedRange("ContextPan", ControlButtons.isPan, function (y) {
+    return trackBankHandler.getTrackPanNormalized(y);
+}, function (y, normalizedPan) {
+    return trackBankHandler.setTrackPanNormalized(y, normalizedPan);
+}, 15 /* ColorPalette.HotPink */, 10 /* ColorPalette.GreenLighter */, 13 /* ColorPalette.BlueLighter */, true);
 //
 // src/out/launchpad/launchpadx.js
 //
@@ -1065,7 +1148,7 @@ var LaunchpadObject = /** @class */ (function () {
         this.contextPrevious = null;
         this.context = ContextArrange;
         this.renderer = new LaunchpadRenderer(GRID_WIDTH, GRID_HEIGHT);
-        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+        this.gridButtonState = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
         this.prevVelocities = new Array(NUM_NOTES);
         this.noteVelocities = new Array(NUM_NOTES);
         for (var i = 0; i < NUM_NOTES; i++) {
@@ -1078,7 +1161,7 @@ var LaunchpadObject = /** @class */ (function () {
             this.previousLights[i] = "";
         }
         this.controlButtonState = new ControlButtons();
-        this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+        this.gridButtonState = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
     }
     /**
      * Returns the panel layout for the DAW.
@@ -1092,6 +1175,13 @@ var LaunchpadObject = /** @class */ (function () {
      */
     LaunchpadObject.prototype.controlButtons = function () {
         return this.controlButtonState;
+    };
+    /**
+     *
+     * @returns
+     */
+    LaunchpadObject.prototype.gridButtons = function () {
+        return this.gridButtonState;
     };
     /**
      * Returns the last context page.
@@ -1117,7 +1207,7 @@ var LaunchpadObject = /** @class */ (function () {
         var isOn = velocity > 0;
         var isGridButton = x < GRID_WIDTH && y < GRID_HEIGHT;
         if (isGridButton) {
-            this.gridButtons.set(x, y, isOn);
+            this.gridButtonState.set(x, y, isOn);
         }
         else {
             this.maybeSetControlButtons(x, y, isOn);
@@ -1145,7 +1235,7 @@ var LaunchpadObject = /** @class */ (function () {
      * Flushes the Launchpad, performing any rendering updates.
      */
     LaunchpadObject.prototype.flush = function () {
-        this.context.render(this, this.renderer);
+        paintColoredContext(this.context, this.renderer);
         this.renderer.present();
     };
     return LaunchpadObject;

@@ -216,17 +216,32 @@ interface TrackBank {
 interface SettableBool {
   set(value: boolean): void;
   toggle(): void;
+  markInterested(): void;
+  addValueObserver: (callback: (value: boolean) => void) => void;
+}
+interface SettableNumber {
+  set(value: number): void;
+  setImmediately(value: number): void;
+  addValueObserver: (callback: (value: number) => void) => void;
+}
+interface NumberValue {
+  value(): SettableNumber;
+  markInterested(): void;
+  reset(): void;
 }
 
 interface Track {
   arm(): SettableBool;
+  solo(): SettableBool;
+  mute(): SettableBool;
+  pan(): NumberValue;
+  volume(): NumberValue;
+
   stop(): void;
 
   isQueuedForStop(): Subscribable<boolean>;
 
   select(): void;
-  pan(): Subscribable<number>;
-  volume(): Subscribable<number>;
   color(): {
     addValueObserver: (
       callback: (r: number, g: number, b: number) => void

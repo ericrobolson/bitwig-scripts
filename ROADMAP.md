@@ -10,17 +10,28 @@
 - [x] Add context for volume control. Tap once to go to volume control state, tap again to go to default state.
 - [x] Add context for pan control. Tap once to go to pan control state, tap again to go to default state.
 - [x] Fixed issue with lights not displaying real time
-- [ ] Standardize interfaces. Take the `contextArrange` and `contextStopClip` and move out the similiar parts and make it data driven. E.g. make the differences interfaces, then call those interfaces from a single unified render method. Follow UX of solid tertiary color nav buttons, pulsing primary color for a border and a solid contrasting color for the menu. Take stop clip as an example and use fun border color combinations for each track.
-- [ ] Add in setting of values for arm controls.
-- [ ] Add in displaying of values for arm controls. If a track is armed, use a high light intensity. Make it flash. If not armed, static low light.
-- [ ] When in volume context, show volume sliders colored by each track.
-- [ ] When in volume context, allow setting of volume level.
+- [x] Focus on 3 contexts: stop, arrange, record arm
+- [x] Standardize interfaces. Take the `contextArrange` and `contextStopClip` and move out the similiar parts and make it data driven. E.g. make the differences interfaces, then call those interfaces from a single unified render method. Follow UX of solid tertiary color nav buttons, pulsing primary color for a border and a solid contrasting color for the menu. Take stop clip as an example and use fun border color combinations for each track.
+- [x] Add in setting of values for arm controls.
+- [x] Implement deletion context
+- [x] Add in displaying of values for arm controls. If a track is armed, use a high light intensity. Make it flash. If not armed, static low light.
+- [x] Implement solo. Copy pasta arm track code.
+- [x] Implement mute. Refactor solo + arm track code to share it and have consistent behavior.
+- [x] Implement context for solo control
+- [x] Implement context for mute control
+- [x] Refactor contexts to use builder functions.
+- [x] Implement volume context. (make value slider control)
+- [x] When in volume context, show volume sliders colored by each track.
+- [x] When in volume context, add setting of volume level.
+- [x] Implement context for pan control
+- [x] Implement display for pan control
+- [x] Implement setting for pan control
 - [ ] Maybe make swap, copy, and delete the note, custom and capture midi buttons? That would give you most sequencer needs you have.
-- [ ] Implement context for pan control
-- [ ] Implement context for mute control
-- [ ] Implement context for solo control
 - [ ] Implement context for Send A control
 - [ ] Implement context for Send B control
+- [ ] Solidify color scheme
+- [ ] Merge to master
+- [ ] Hide anywhere where you do `y = 7 - col` and abstract it with a function.
 
 - [ ] Update layouts depending on which mode you're in.
 - [ ] Add switching between mix, arrange, and edit modes
@@ -32,7 +43,6 @@
 - [ ] Make buttons glow a color if pressed.
 - [ ] Add triggering of metronome
 - [ ] If unable to navigate in a direction, make that light fade a bit
-- [ ] Wire up deletion of clips. Make a double tap?
 - [ ] Figure out a way to drive clip editing and arrangment editing with launchpad
 - [ ] Wire addition of new tracks
 - [ ] Add in quanitzation settings menu for track for launchpad. Maybe set under 'note'? Have it display text and use a slider.

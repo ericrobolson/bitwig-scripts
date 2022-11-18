@@ -21,8 +21,10 @@ class LaunchpadRenderer implements Renderer, RenderQueue {
   private queuedLights: string = "";
   private previousLights: Array<string>;
   private isDirty: boolean = false;
+  private currentCount: number = 0;
   private readonly width: number;
   private readonly height: number;
+  private readonly MAX_LIGHTS: number = 81;
 
   constructor(width: number, height: number) {
     const capacity = width * height;
@@ -57,11 +59,14 @@ class LaunchpadRenderer implements Renderer, RenderQueue {
    * @param sysexMsg
    */
   private setLight(x: number, y: number, sysexMsg: string) {
-    const index = index2dTo1d(x, y, this.width, this.height);
-    if (this.previousLights[index] !== sysexMsg) {
-      this.previousLights[index] = sysexMsg;
-      this.queuedLights += sysexMsg;
-      this.isDirty = true;
+    if (this.currentCount < this.MAX_LIGHTS) {
+      const index = index2dTo1d(x, y, this.width, this.height);
+      if (this.previousLights[index] !== sysexMsg) {
+        this.previousLights[index] = sysexMsg;
+        this.queuedLights += sysexMsg;
+        this.isDirty = true;
+        this.currentCount += 1;
+      }
     }
   }
 
@@ -81,6 +86,7 @@ class LaunchpadRenderer implements Renderer, RenderQueue {
    */
   private clearQueue(): void {
     this.isDirty = false;
+    this.currentCount = 0;
     this.queuedLights = "";
   }
 }

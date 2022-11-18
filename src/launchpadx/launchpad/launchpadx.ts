@@ -6,7 +6,7 @@ class LaunchpadObject {
   private prevVelocities: Array<number>;
   private previousLights: Array<string>;
   private controlButtonState: ControlButtons;
-  private gridButtons: GridButtons;
+  private gridButtonState: GridButtons;
   private context: Context;
   private contextPrevious: Context | null;
   private renderer: Renderer & RenderQueue;
@@ -15,7 +15,7 @@ class LaunchpadObject {
     this.contextPrevious = null;
     this.context = ContextArrange;
     this.renderer = new LaunchpadRenderer(GRID_WIDTH, GRID_HEIGHT);
-    this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+    this.gridButtonState = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
 
     this.prevVelocities = new Array(NUM_NOTES);
     this.noteVelocities = new Array(NUM_NOTES);
@@ -31,7 +31,7 @@ class LaunchpadObject {
     }
 
     this.controlButtonState = new ControlButtons();
-    this.gridButtons = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
+    this.gridButtonState = new GridButtons(GRID_WIDTH, GRID_HEIGHT);
   }
 
   /**
@@ -47,6 +47,14 @@ class LaunchpadObject {
    */
   controlButtons(): ControlButtons {
     return this.controlButtonState;
+  }
+
+  /**
+   *
+   * @returns
+   */
+  gridButtons(): GridButtons {
+    return this.gridButtonState;
   }
 
   /**
@@ -78,7 +86,7 @@ class LaunchpadObject {
     const isGridButton = x < GRID_WIDTH && y < GRID_HEIGHT;
 
     if (isGridButton) {
-      this.gridButtons.set(x, y, isOn);
+      this.gridButtonState.set(x, y, isOn);
     } else {
       this.maybeSetControlButtons(x, y, isOn);
     }
@@ -118,7 +126,7 @@ class LaunchpadObject {
    * Flushes the Launchpad, performing any rendering updates.
    */
   flush() {
-    this.context.render(this, this.renderer);
+    paintColoredContext(this.context, this.renderer);
     this.renderer.present();
   }
 
